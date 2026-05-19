@@ -126,12 +126,20 @@ export class CircuitScene extends Phaser.Scene {
       if (this.topology === 'custom' && this.draggedComponent) {
         if (pointer.leftButtonDown()) {
           const pWorld = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-          const slots = [
-            { id: 1, x: this.cx - 140, y: this.top, isHorizontal: true },
-            { id: 2, x: this.cx, y: this.cy, isHorizontal: false },
-            { id: 4, x: this.cx + 140, y: this.cy, isHorizontal: false },
-            { id: 3, x: this.right, y: this.cy - 60, isHorizontal: false }
-          ];
+          const isDraggingHorizontal = this.draggedComponent.angle === 0;
+
+          const slots = isDraggingHorizontal
+            ? [
+                { id: 1, x: this.cx - 140, y: this.top, isHorizontal: true },
+                { id: 2, x: this.cx, y: this.top, isHorizontal: true },
+                { id: 4, x: this.cx + 140, y: this.top, isHorizontal: true },
+                { id: 3, x: this.right - 70, y: this.top, isHorizontal: true }
+              ]
+            : [
+                { id: 2, x: this.cx, y: this.cy, isHorizontal: false },
+                { id: 4, x: this.cx + 140, y: this.cy, isHorizontal: false },
+                { id: 3, x: this.right, y: this.cy - 60, isHorizontal: false }
+              ];
 
           let nearest = slots[0];
           let minDist = Phaser.Math.Distance.Between(pWorld.x, pWorld.y, nearest.x, nearest.y);
@@ -145,10 +153,21 @@ export class CircuitScene extends Phaser.Scene {
 
           if (minDist < 100) {
             const type = this.draggedComponent.type;
+            const orient = nearest.isHorizontal ? 'horizontal' : 'vertical';
+
             if (nearest.id === 1) store.dispatch(setSlot1State(type));
-            if (nearest.id === 2) store.dispatch(setSlot2State(type));
-            if (nearest.id === 3) store.dispatch(setSlot3State(type));
-            if (nearest.id === 4) store.dispatch(setSlot4State(type));
+            if (nearest.id === 2) {
+              store.dispatch(setSlot2State(type));
+              store.dispatch(setSlot2Orient(orient));
+            }
+            if (nearest.id === 3) {
+              store.dispatch(setSlot3State(type));
+              store.dispatch(setSlot3Orient(orient));
+            }
+            if (nearest.id === 4) {
+              store.dispatch(setSlot4State(type));
+              store.dispatch(setSlot4Orient(orient));
+            }
 
             store.dispatch(setDraggedComponent(null));
             this.cameras.main.flash(85, 99, 102, 241, true);
@@ -170,11 +189,16 @@ export class CircuitScene extends Phaser.Scene {
       if (this.topology === 'custom' && !this.draggedComponent) {
         if (pointer.leftButtonDown()) {
           const pWorld = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+          const c1 = this.getSlotCoords(1);
+          const c2 = this.getSlotCoords(2);
+          const c3 = this.getSlotCoords(3);
+          const c4 = this.getSlotCoords(4);
+
           const slots = [
-            { id: 1, x: this.cx - 140, y: this.top, state: this.slot1, isHorizontal: true },
-            { id: 2, x: this.cx, y: this.cy, state: this.slot2, isHorizontal: false },
-            { id: 4, x: this.cx + 140, y: this.cy, state: this.slot4, isHorizontal: false },
-            { id: 3, x: this.right, y: this.cy - 60, state: this.slot3, isHorizontal: false }
+            { id: 1, x: c1.x, y: c1.y, state: this.slot1, isHorizontal: c1.isHorizontal },
+            { id: 2, x: c2.x, y: c2.y, state: this.slot2, isHorizontal: c2.isHorizontal },
+            { id: 4, x: c4.x, y: c4.y, state: this.slot4, isHorizontal: c4.isHorizontal },
+            { id: 3, x: c3.x, y: c3.y, state: this.slot3, isHorizontal: c3.isHorizontal }
           ];
 
           let nearest = slots[0];
@@ -206,29 +230,25 @@ export class CircuitScene extends Phaser.Scene {
       if (this.topology === 'custom' && this.activeTool !== 'pan') {
         if (pointer.leftButtonDown()) {
           const pWorld = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-          const slots = [
-            { id: 1, x: this.cx - 140, y: this.top },
-            { id: 2, x: this.cx, y: this.cy },
-            { id: 4, x: this.cx + 140, y: this.cy },
-            { id: 3, x: this.right, y: this.cy - 60 }
-          ];
+          const nearest = this.findNearestSlotCandidate(pWorld.x, pWorld.y);
 
-          let nearest = slots[0];
-          let minDist = Phaser.Math.Distance.Between(pWorld.x, pWorld.y, nearest.x, nearest.y);
-          for (let i = 1; i < slots.length; i++) {
-            const d = Phaser.Math.Distance.Between(pWorld.x, pWorld.y, slots[i].x, slots[i].y);
-            if (d < minDist) {
-              minDist = d;
-              nearest = slots[i];
-            }
-          }
-
-          if (minDist < 75) {
+          if (nearest.distance < 75) {
             const newState = this.activeTool === 'resistor' ? 'resistor' : this.activeTool === 'wire' ? 'wire' : 'empty';
+            const orient = nearest.isHorizontal ? 'horizontal' : 'vertical';
+
             if (nearest.id === 1) store.dispatch(setSlot1State(newState));
-            if (nearest.id === 2) store.dispatch(setSlot2State(newState));
-            if (nearest.id === 3) store.dispatch(setSlot3State(newState));
-            if (nearest.id === 4) store.dispatch(setSlot4State(newState));
+            if (nearest.id === 2) {
+              store.dispatch(setSlot2State(newState));
+              store.dispatch(setSlot2Orient(orient));
+            }
+            if (nearest.id === 3) {
+              store.dispatch(setSlot3State(newState));
+              store.dispatch(setSlot3Orient(orient));
+            }
+            if (nearest.id === 4) {
+              store.dispatch(setSlot4State(newState));
+              store.dispatch(setSlot4Orient(orient));
+            }
 
             this.cameras.main.flash(85, 99, 102, 241, true);
             return;
@@ -253,25 +273,10 @@ export class CircuitScene extends Phaser.Scene {
 
       if (pointer.rightButtonDown() && this.topology === 'custom' && !this.draggedComponent) {
         const pWorld = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-        const slots = [
-          { id: 1, x: this.cx - 140, y: this.top },
-          { id: 2, x: this.cx, y: this.cy },
-          { id: 4, x: this.cx + 140, y: this.cy },
-          { id: 3, x: this.right, y: this.cy - 60 }
-        ];
+        const nearest = this.findNearestSlotCandidate(pWorld.x, pWorld.y);
 
-        let nearest = slots[0];
-        let minDist = Phaser.Math.Distance.Between(pWorld.x, pWorld.y, nearest.x, nearest.y);
-        for (let i = 1; i < slots.length; i++) {
-          const d = Phaser.Math.Distance.Between(pWorld.x, pWorld.y, slots[i].x, slots[i].y);
-          if (d < minDist) {
-            minDist = d;
-            nearest = slots[i];
-          }
-        }
-
-        if (minDist < 140) {
-          this.spawnContextMenu(pointer.x, pointer.y, nearest.id);
+        if (nearest.distance < 140) {
+          this.spawnContextMenu(pointer.x, pointer.y, nearest.id, nearest.isHorizontal ? 'horizontal' : 'vertical');
         }
       }
     });
@@ -319,7 +324,7 @@ export class CircuitScene extends Phaser.Scene {
     });
   }
 
-  private spawnContextMenu(x: number, y: number, slotIndex: number) {
+  private spawnContextMenu(x: number, y: number, slotIndex: number, orient: 'horizontal' | 'vertical') {
     if (this.contextMenu) this.contextMenu.destroy();
 
     const html = `
@@ -350,14 +355,32 @@ export class CircuitScene extends Phaser.Scene {
       const targetId = event.target.id;
       if (targetId === 'opt-resistor') {
         if (slotIndex === 1) store.dispatch(setSlot1State('resistor'));
-        if (slotIndex === 2) store.dispatch(setSlot2State('resistor'));
-        if (slotIndex === 3) store.dispatch(setSlot3State('resistor'));
-        if (slotIndex === 4) store.dispatch(setSlot4State('resistor'));
+        if (slotIndex === 2) {
+          store.dispatch(setSlot2State('resistor'));
+          store.dispatch(setSlot2Orient(orient));
+        }
+        if (slotIndex === 3) {
+          store.dispatch(setSlot3State('resistor'));
+          store.dispatch(setSlot3Orient(orient));
+        }
+        if (slotIndex === 4) {
+          store.dispatch(setSlot4State('resistor'));
+          store.dispatch(setSlot4Orient(orient));
+        }
       } else if (targetId === 'opt-wire') {
         if (slotIndex === 1) store.dispatch(setSlot1State('wire'));
-        if (slotIndex === 2) store.dispatch(setSlot2State('wire'));
-        if (slotIndex === 3) store.dispatch(setSlot3State('wire'));
-        if (slotIndex === 4) store.dispatch(setSlot4State('wire'));
+        if (slotIndex === 2) {
+          store.dispatch(setSlot2State('wire'));
+          store.dispatch(setSlot2Orient(orient));
+        }
+        if (slotIndex === 3) {
+          store.dispatch(setSlot3State('wire'));
+          store.dispatch(setSlot3Orient(orient));
+        }
+        if (slotIndex === 4) {
+          store.dispatch(setSlot4State('wire'));
+          store.dispatch(setSlot4Orient(orient));
+        }
       } else if (targetId === 'opt-empty') {
         if (slotIndex === 1) store.dispatch(setSlot1State('empty'));
         if (slotIndex === 2) store.dispatch(setSlot2State('empty'));
@@ -500,12 +523,20 @@ export class CircuitScene extends Phaser.Scene {
     // 9.5. Draw Dragged Component Preview
     if (this.topology === 'custom' && this.draggedComponent) {
       const mouseWorld = this.cameras.main.getWorldPoint(this.input.activePointer.x, this.input.activePointer.y);
-      const slots = [
-        { id: 1, x: this.cx - 140, y: this.top, isHorizontal: true, color: COLORS.r1 },
-        { id: 2, x: this.cx, y: this.cy, isHorizontal: false, color: COLORS.r2 },
-        { id: 4, x: this.cx + 140, y: this.cy, isHorizontal: false, color: COLORS.r4 },
-        { id: 3, x: this.right, y: this.cy - 60, isHorizontal: false, color: COLORS.r3 }
-      ];
+      const isDraggingHorizontal = this.draggedComponent.angle === 0;
+
+      const slots = isDraggingHorizontal
+        ? [
+            { id: 1, x: this.cx - 140, y: this.top, isHorizontal: true, color: COLORS.r1 },
+            { id: 2, x: this.cx, y: this.top, isHorizontal: true, color: COLORS.r2 },
+            { id: 4, x: this.cx + 140, y: this.top, isHorizontal: true, color: COLORS.r4 },
+            { id: 3, x: this.right - 70, y: this.top, isHorizontal: true, color: COLORS.r3 }
+          ]
+        : [
+            { id: 2, x: this.cx, y: this.cy, isHorizontal: false, color: COLORS.r2 },
+            { id: 4, x: this.cx + 140, y: this.cy, isHorizontal: false, color: COLORS.r4 },
+            { id: 3, x: this.right, y: this.cy - 60, isHorizontal: false, color: COLORS.r3 }
+          ];
 
       let nearestSlot = slots[0];
       let minDist = Phaser.Math.Distance.Between(mouseWorld.x, mouseWorld.y, nearestSlot.x, nearestSlot.y);
@@ -942,21 +973,71 @@ export class CircuitScene extends Phaser.Scene {
       if (this.slot1 === 'resistor') {
         this.drawResistorGfx(this.cx - 140, this.top, true, COLORS.r1);
         this.addValueBadge(this.cx - 140, this.top - 38, 'R₁', v1, i1, '#f43f5e', 1);
+      } else if (this.slot1 === 'wire') {
+        this.wireGraphics.fillStyle(0x0a0e17, 1);
+        this.wireGraphics.fillRect(this.cx - 140 - 22, this.top - 5, 44, 10);
+        this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+        this.sceneGfx.lineBetween(this.cx - 140 - 22, this.top, this.cx - 140 + 22, this.top);
       }
+
       // Slot 2
+      const s2 = this.getSlotCoords(2);
       if (this.slot2 === 'resistor') {
-        this.drawResistorGfx(this.cx, this.cy, false, COLORS.r2);
-        this.addValueBadge(this.cx, this.cy - 50, 'R₂', v2, i2, '#3b82f6', 2);
+        this.drawResistorGfx(s2.x, s2.y, s2.isHorizontal, COLORS.r2);
+        const badgeY = s2.isHorizontal ? s2.y - 38 : s2.y - 50;
+        this.addValueBadge(s2.x, badgeY, 'R₂', v2, i2, '#3b82f6', 2);
+      } else if (this.slot2 === 'wire') {
+        this.wireGraphics.fillStyle(0x0a0e17, 1);
+        if (s2.isHorizontal) {
+          this.wireGraphics.fillRect(s2.x - 22, s2.y - 5, 44, 10);
+          this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+          this.sceneGfx.lineBetween(s2.x - 22, s2.y, s2.x + 22, s2.y);
+        } else {
+          this.wireGraphics.fillRect(s2.x - 5, s2.y - 22, 10, 44);
+          this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+          this.sceneGfx.lineBetween(s2.x, s2.y - 22, s2.x, s2.y + 22);
+        }
       }
+
       // Slot 3
+      const s3 = this.getSlotCoords(3);
       if (this.slot3 === 'resistor') {
-        this.drawResistorGfx(this.right, this.cy - 60, false, COLORS.r3);
-        this.addValueBadge(this.right - 58, this.cy - 60, 'R₃', v3, i3, '#10b981', 3);
+        this.drawResistorGfx(s3.x, s3.y, s3.isHorizontal, COLORS.r3);
+        const badgeX = s3.isHorizontal ? s3.x : s3.x - 58;
+        const badgeY = s3.isHorizontal ? s3.y - 38 : s3.y - 60;
+        this.addValueBadge(badgeX, badgeY, 'R₃', v3, i3, '#10b981', 3);
+      } else if (this.slot3 === 'wire') {
+        this.wireGraphics.fillStyle(0x0a0e17, 1);
+        if (s3.isHorizontal) {
+          this.wireGraphics.fillRect(s3.x - 22, s3.y - 5, 44, 10);
+          this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+          this.sceneGfx.lineBetween(s3.x - 22, s3.y, s3.x + 22, s3.y);
+        } else {
+          this.wireGraphics.fillRect(s3.x - 5, s3.y - 22, 10, 44);
+          this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+          this.sceneGfx.lineBetween(s3.x, s3.y - 22, s3.x, s3.y + 22);
+        }
       }
+
       // Slot 4
-      if (this.topology === 'custom' && this.slot4 === 'resistor') {
-        this.drawResistorGfx(this.cx + 140, this.cy, false, COLORS.r4);
-        this.addValueBadge(this.cx + 140, this.cy - 50, 'R₄', v4, i4, '#c084fc', 4);
+      if (this.topology === 'custom') {
+        const s4 = this.getSlotCoords(4);
+        if (this.slot4 === 'resistor') {
+          this.drawResistorGfx(s4.x, s4.y, s4.isHorizontal, COLORS.r4);
+          const badgeY = s4.isHorizontal ? s4.y - 38 : s4.y - 50;
+          this.addValueBadge(s4.x, badgeY, 'R₄', v4, i4, '#c084fc', 4);
+        } else if (this.slot4 === 'wire') {
+          this.wireGraphics.fillStyle(0x0a0e17, 1);
+          if (s4.isHorizontal) {
+            this.wireGraphics.fillRect(s4.x - 22, s4.y - 5, 44, 10);
+            this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+            this.sceneGfx.lineBetween(s4.x - 22, s4.y, s4.x + 22, s4.y);
+          } else {
+            this.wireGraphics.fillRect(s4.x - 5, s4.y - 22, 10, 44);
+            this.sceneGfx.lineStyle(4, COLORS.wire, 1);
+            this.sceneGfx.lineBetween(s4.x, s4.y - 22, s4.x, s4.y + 22);
+          }
+        }
       }
     }
   }
@@ -981,6 +1062,29 @@ export class CircuitScene extends Phaser.Scene {
         : { x: this.right, y: this.cy - 60, isHorizontal: false };
     }
     return { x: 0, y: 0, isHorizontal: false };
+  }
+
+  private findNearestSlotCandidate(wx: number, wy: number): { id: number, isHorizontal: boolean, distance: number } {
+    const candidates = [
+      { id: 1, x: this.cx - 140, y: this.top, isHorizontal: true },
+      { id: 2, x: this.cx, y: this.cy, isHorizontal: false },
+      { id: 2, x: this.cx, y: this.top, isHorizontal: true },
+      { id: 4, x: this.cx + 140, y: this.cy, isHorizontal: false },
+      { id: 4, x: this.cx + 140, y: this.top, isHorizontal: true },
+      { id: 3, x: this.right, y: this.cy - 60, isHorizontal: false },
+      { id: 3, x: this.right - 70, y: this.top, isHorizontal: true }
+    ];
+
+    let nearest = candidates[0];
+    let minDist = Phaser.Math.Distance.Between(wx, wy, nearest.x, nearest.y);
+    for (let i = 1; i < candidates.length; i++) {
+      const d = Phaser.Math.Distance.Between(wx, wy, candidates[i].x, candidates[i].y);
+      if (d < minDist) {
+        minDist = d;
+        nearest = candidates[i];
+      }
+    }
+    return { id: nearest.id, isHorizontal: nearest.isHorizontal, distance: minDist };
   }
 
   private drawSlotIndicators() {
