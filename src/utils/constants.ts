@@ -52,6 +52,16 @@ export const MATERIALS: Record<string, MaterialPreset> = {
     colorHex: '#9ca3af',
     restitution: 0.5,
   },
+  sandpaper: {
+    name: 'Lija N150',
+    icon: '▤',
+    lucideIcon: 'scroll',
+    frictionStatic: 0.08,
+    frictionKinetic: 0.02,
+    color: 0xf59e0b,
+    colorHex: '#f59e0b',
+    restitution: 0.1,
+  },
 };
 
 export const COLORS = {
@@ -60,9 +70,9 @@ export const COLORS = {
   friction: 0x10b981,
   parallel: 0xf59e0b,
   net: 0xec4899,
-  ball: 0x6366f1,
-  ballGlow: 0xa5b4fc,
-  ramp: 0x374151,
+  ball: 0xe2e8f0, // Aluminum-like bright color
+  ballGlow: 0xcbd5e1,
+  ramp: 0x475569,
   ground: 0x1e293b,
   gridLine: 0x1e293b,
   gridLineBright: 0x334155,
@@ -70,11 +80,12 @@ export const COLORS = {
 };
 
 export const PHYSICS_DEFAULTS = {
-  angle: 30,        // degrees
-  mass: 2,          // kg
+  angle: 35,        // degrees (from Guion.pdf)
+  mass: 1.2,        // kg
   radius: 0.1,      // m
-  gravity: 9.81,    // m/s²
-  material: 'wood',
+  gravity: 9.8,     // m/s² (from Guion.pdf)
+  material: 'sandpaper',
+  rampLength: 0.45, // m (45 cm from Guion.pdf)
 };
 
 // Scale factor: pixels per meter

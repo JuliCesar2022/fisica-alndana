@@ -9,6 +9,8 @@ interface RampState {
   isPlaying: boolean;
   customFriction: number;
   customMaterialName: string;
+  rampLength: number;
+  sensorDistances: number[];
   
   // Results from physics engine
   forces: {
@@ -27,6 +29,10 @@ interface RampState {
     kineticEnergy: number;
     potentialEnergy: number;
     totalEnergy: number;
+    s1Time: number | null;
+    s2Time: number | null;
+    s3Time: number | null;
+    s4Time: number | null;
   };
 }
 
@@ -38,12 +44,15 @@ const initialState: RampState = {
   isPlaying: false,
   customFriction: 0.25,
   customMaterialName: 'Mi Material',
+  rampLength: PHYSICS_DEFAULTS.rampLength,
+  sensorDistances: [0.0, 0.0566, 0.1482, 0.2187],
   
   forces: {
     weight: 0, normalForce: 0, parallelForce: 0, frictionForce: 0, netForce: 0, acceleration: 0
   },
   state: {
-    time: 0, velocity: 0, position: 0, height: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0
+    time: 0, velocity: 0, position: 0, height: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0,
+    s1Time: null, s2Time: null, s3Time: null, s4Time: null
   }
 };
 
@@ -58,6 +67,10 @@ export const rampSlice = createSlice({
     setPlaying: (state, action: PayloadAction<boolean>) => { state.isPlaying = action.payload; },
     setCustomFriction: (state, action: PayloadAction<number>) => { state.customFriction = action.payload; },
     setCustomMaterialName: (state, action: PayloadAction<string>) => { state.customMaterialName = action.payload; },
+    setRampLength: (state, action: PayloadAction<number>) => { state.rampLength = action.payload; },
+    updateSensorDistance: (state, action: PayloadAction<{index: number, distance: number}>) => {
+      state.sensorDistances[action.payload.index] = action.payload.distance;
+    },
     
     updatePhysicsData: (state, action: PayloadAction<{forces: RampState['forces'], state: RampState['state']}>) => {
       state.forces = action.payload.forces;
@@ -66,5 +79,5 @@ export const rampSlice = createSlice({
   }
 });
 
-export const { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, updatePhysicsData } = rampSlice.actions;
+export const { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, setRampLength, updateSensorDistance, updatePhysicsData } = rampSlice.actions;
 export default rampSlice.reducer;

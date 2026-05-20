@@ -1,0 +1,143 @@
+1. Presentación del proyecto
+“Buenos días/tardes.
+Nuestro proyecto consiste en una rampa instrumentada diseñada para analizar
+experimentalmente el movimiento acelerado de una esfera de aluminio sobre un plano
+inclinado con fricción.”
+
+2. Objetivo del proyecto
+“El objetivo principal es demostrar cómo cambia la velocidad de un proyectil mientras
+desciende por una superficie inclinada y cómo la fricción influye en ese movimiento.”
+
+3. Explicación física inicial
+“La rampa tiene una inclinación de 35 grados y una superficie cubierta con lija N180, lo que
+introduce fricción durante el desplazamiento de la esfera.”
+“Cuando la bola inicia en la parte superior, posee principalmente energía potencial
+gravitacional.”
+𝐸𝑝 = 𝑚𝑔ℎ
+𝑚
+ℎ
+𝑃𝐸 = 𝑚𝑔ℎ = 299.88
+La gravedad está fija en g = 9.8 en esta visualización.
+h
+“A medida que desciende, esa energía potencial se transforma en energía cinética.”
+1
+𝐸𝑐 = 𝑚𝑣 2
+2
+“Por eso la velocidad de la bola aumenta durante el recorrido.”
+
+4. Explicación de la estructura física
+“La rampa posee una longitud aproximada de 45 cm y cuatro sensores infrarrojos distribuidos
+a lo largo del recorrido.”
+
+5. Función de los sensores
+“Cada sensor cumple una función específica.”
+
+Sensor Función
+S1
+
+inicia el cronometraje
+
+S2
+
+mide el primer tramo
+
+S3
+
+mide el segundo tramo
+
+S4
+
+mide el tercer tramo y finaliza la medición
+
+6. Explicación electrónica
+“Los sensores están conectados a un Arduino UNO, encargado de recibir las señales y
+procesar los datos en tiempo real.”
+“La información se muestra en una pantalla LCD 20x4 con comunicación I2C.”
+
+7. Cómo funciona el sistema
+“Cuando la esfera pasa por el sensor S1, el Arduino inicia el conteo del tiempo.”
+“Luego, cada sensor registra el instante exacto en el que la bola atraviesa cada punto de la
+rampa.”
+
+8. Explicación de los tiempos
+“El sistema calcula automáticamente los tiempos entre sensores.”
+Por ejemplo:
+Tramo Tiempo
+T1
+
+S1 → S2
+
+T2
+
+S2 → S3
+
+T3
+
+S3 → S4
+
+9. Explicación de velocidades
+“Conociendo la distancia entre sensores, que es aproximadamente 11 cm, el sistema calcula
+la velocidad promedio en cada tramo.”
+𝑣=
+
+𝑑
+𝑡
+
+10. Ejemplo real
+“Por ejemplo, si el primer tramo tarda 145 ms:”
+145𝑚𝑠 = 0.145𝑠
+“Entonces la velocidad del primer tramo es:”
+𝑣1 =
+
+0.11
+0.145
+
+“Obteniendo aproximadamente 0.76 m/s.”
+
+11. Explicación de la aceleración
+“Posteriormente el sistema calcula la aceleración experimental.”
+𝑎=
+
+𝑣𝑓 − 𝑣𝑖
+𝑡
+
+“Esto permite analizar cómo cambia la velocidad a lo largo del recorrido.”
+
+12. Interpretación de resultados
+“Durante las pruebas observamos que los tiempos disminuyen progresivamente.”
+Ejemplo:
+T1
+
+T2
+
+T3
+
+145 ms 91 ms 50 ms
+“Esto significa que la esfera tarda menos tiempo en recorrer cada tramo, indicando que la
+velocidad aumenta.”
+
+13. Conclusión física
+“Los resultados demuestran experimentalmente que el movimiento sobre el plano inclinado
+es acelerado.”
+“Sin embargo, la fricción generada por la lija reduce parcialmente la aceleración respecto a
+un sistema ideal sin rozamiento.”
+
+14. Valor del Arduino en el proyecto
+“El Arduino no reemplaza la física del proyecto.
+Su función es actuar como sistema de adquisición de datos, permitiendo obtener mediciones
+precisas y automatizadas.”
+
+15. Qué demuestra el proyecto
+“Con este sistema logramos demostrar:”
+movimiento acelerado
+aumento de velocidad
+transformación de energía
+influencia de la fricción
+medición experimental mediante sensores
+
+16. Posible cierre
+“En conclusión, el proyecto permitió integrar conceptos de física, electrónica y programación
+para analizar experimentalmente el comportamiento de un proyectil sobre un plano
+inclinado.”
+
+

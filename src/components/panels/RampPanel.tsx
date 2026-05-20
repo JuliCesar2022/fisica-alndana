@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName } from '../../store/rampSlice';
+import { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, setRampLength, updateSensorDistance } from '../../store/rampSlice';
 import { MATERIALS } from '../../utils/constants';
-import { Triangle, Weight, Globe, Layers, Play, Pause, RotateCcw, StepForward, SlidersHorizontal, Edit2 } from 'lucide-react';
+import { Triangle, Weight, Globe, Layers, Play, Pause, RotateCcw, StepForward, SlidersHorizontal, Edit2, Ruler, Target } from 'lucide-react';
 
 export const EVENT_RESET_RAMP = 'evt_reset_ramp';
 
@@ -109,6 +109,49 @@ export default function RampPanel() {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="control-group">
+            <div className="control-label">
+              <span><Ruler size={14} /> Longitud Rampa</span>
+              <span className="control-value">{rampState.rampLength.toFixed(2)} m</span>
+            </div>
+            <input 
+              type="range" 
+              min="0.10" 
+              max="2.00" 
+              step="0.01" 
+              value={rampState.rampLength} 
+              onChange={(e) => {
+                dispatch(setRampLength(Number(e.target.value)));
+                window.dispatchEvent(new Event(EVENT_RESET_RAMP));
+              }} 
+            />
+          </div>
+
+          <div className="control-group">
+            <div className="control-label">
+              <span><Target size={14} /> Posición Sensores (m)</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+              {[1, 2, 3, 4].map((sensorNum, idx) => (
+                <div key={`sensor-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '10px', color: '#94a3b8' }}>Sensor S{sensorNum}</span>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max={rampState.rampLength} 
+                    step="0.01" 
+                    value={rampState.sensorDistances ? rampState.sensorDistances[idx] : 0} 
+                    onChange={(e) => {
+                      dispatch(updateSensorDistance({ index: idx, distance: Number(e.target.value) }));
+                      window.dispatchEvent(new Event(EVENT_RESET_RAMP));
+                    }}
+                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px', borderRadius: '4px', fontSize: '11px', width: '100%' }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

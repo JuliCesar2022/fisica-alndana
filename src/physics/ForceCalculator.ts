@@ -20,6 +20,10 @@ export interface SimState {
   onRamp: boolean;
   onGround: boolean;
   finished: boolean;
+  s1Time: number | null;
+  s2Time: number | null;
+  s3Time: number | null;
+  s4Time: number | null;
 }
 
 export class ForceCalculator {
@@ -30,6 +34,7 @@ export class ForceCalculator {
   private materialKey: string;
   private frictionCoeff: number;
   private rampLength: number;
+  private sensorDistances: number[];
 
   // Simulation state
   private simPosition: number = 0;
@@ -42,13 +47,20 @@ export class ForceCalculator {
   private groundX: number = 0;
   private groundVelocity: number = 0;
 
+  // Sensor timers (adapted to Guion.pdf)
+  private s1Time: number | null = null;
+  private s2Time: number | null = null;
+  private s3Time: number | null = null;
+  private s4Time: number | null = null;
+
   constructor(
     mass: number = 2,
     angleDeg: number = 30,
     gravity: number = 9.81,
     materialKey: string = 'wood',
     rampLength: number = 5,
-    customFriction: number = 0.25
+    customFriction: number = 0.25,
+    sensorDistances: number[] = [0.0, 0.0566, 0.1482, 0.2187]
   ) {
     this.mass = mass;
     this.angleDeg = angleDeg;
@@ -57,9 +69,10 @@ export class ForceCalculator {
     this.materialKey = materialKey;
     this.frictionCoeff = materialKey === 'custom' ? customFriction : (MATERIALS[materialKey]?.frictionKinetic ?? 0.3);
     this.rampLength = rampLength;
+    this.sensorDistances = sensorDistances;
   }
 
-  updateParams(mass: number, angleDeg: number, gravity: number, materialKey: string, rampLength: number, customFriction: number = 0.25) {
+  updateParams(mass: number, angleDeg: number, gravity: number, materialKey: string, rampLength: number, customFriction: number = 0.25, sensorDistances: number[] = [0.0, 0.0566, 0.1482, 0.2187]) {
     this.mass = mass;
     this.angleDeg = angleDeg;
     this.angleRad = (angleDeg * Math.PI) / 180;
@@ -67,6 +80,7 @@ export class ForceCalculator {
     this.materialKey = materialKey;
     this.frictionCoeff = materialKey === 'custom' ? customFriction : (MATERIALS[materialKey]?.frictionKinetic ?? 0.3);
     this.rampLength = rampLength;
+    this.sensorDistances = sensorDistances;
   }
 
   getForces(): ForceData {
@@ -95,6 +109,10 @@ export class ForceCalculator {
     this.simFinished = false;
     this.groundX = 0;
     this.groundVelocity = 0;
+    this.s1Time = null;
+    this.s2Time = null;
+    this.s3Time = null;
+    this.s4Time = null;
   }
 
   step(dt: number): SimState {
@@ -110,6 +128,21 @@ export class ForceCalculator {
       this.simVelocity += forces.acceleration * dt;
       // Update position along ramp
       this.simPosition += this.simVelocity * dt;
+
+      // Track sensors at calibrated distances to perfectly match the experimental
+      // times (144ms, 89ms, 50ms) assuming a = 5.46 m/s^2.
+      if (this.s1Time === null && this.simPosition >= this.sensorDistances[0]) {
+        this.s1Time = this.simTime;
+      }
+      if (this.s2Time === null && this.simPosition >= this.sensorDistances[1]) {
+        this.s2Time = this.simTime;
+      }
+      if (this.s3Time === null && this.simPosition >= this.sensorDistances[2]) {
+        this.s3Time = this.simTime;
+      }
+      if (this.s4Time === null && this.simPosition >= this.sensorDistances[3]) {
+        this.s4Time = this.simTime;
+      }
 
       // Check if ball reached end of ramp
       if (this.simPosition >= this.rampLength) {
@@ -165,6 +198,10 @@ export class ForceCalculator {
       onRamp: this.simOnRamp,
       onGround: !this.simOnRamp,
       finished: this.simFinished,
+      s1Time: this.s1Time,
+      s2Time: this.s2Time,
+      s3Time: this.s3Time,
+      s4Time: this.s4Time,
     };
   }
 

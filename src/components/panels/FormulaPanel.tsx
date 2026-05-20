@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { Sigma, HelpCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
 import katex from 'katex';
+import { MATERIALS } from '../../utils/constants';
 
 interface FormulaPanelProps {
   type: 'ramp' | 'electro' | 'circuit';
@@ -43,7 +44,7 @@ export default function FormulaPanel({ type }: FormulaPanelProps) {
 
   const renderRamp = () => {
     const { angle, mass, material, forces } = ramp;
-    const mu = material === 'wood' ? 0.35 : material === 'ice' ? 0.05 : 0.6;
+    const mu = material === 'custom' ? ramp.customFriction : (MATERIALS[material]?.frictionKinetic ?? 0.35);
 
     return (
       <>
