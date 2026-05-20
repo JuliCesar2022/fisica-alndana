@@ -5,7 +5,7 @@ import { EnergyTracker } from '../physics/EnergyTracker';
 import { VectorRenderer } from '../utils/VectorRenderer';
 import { store } from '../store/store';
 import { updatePhysicsData, setPlaying } from '../store/rampSlice';
-import { EVENT_RESET_RAMP } from '../components/panels/RampPanel';
+import { EVENT_RESET_RAMP } from '../components/panels/MiroLeftPanel';
 
 export class InclinedPlaneScene extends Phaser.Scene {
   private forceCalc!: ForceCalculator;

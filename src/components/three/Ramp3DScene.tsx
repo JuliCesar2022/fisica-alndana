@@ -7,7 +7,7 @@ import { RootState } from '../../store/store';
 import { updatePhysicsData, setPlaying } from '../../store/rampSlice';
 import { ForceCalculator } from '../../physics/ForceCalculator';
 import { MATERIALS } from '../../utils/constants';
-import { EVENT_RESET_RAMP } from '../panels/RampPanel';
+import { EVENT_RESET_RAMP } from '../panels/MiroLeftPanel';
 
 // ─── Material Colors ───────────────────────────────────────────────
 const MAT_COLORS: Record<string, string> = {
@@ -243,12 +243,17 @@ function CinematicCameraController({
 }) {
   const controlsRef = useRef<any>(null);
   const isPlayingRef = useRef(isPlaying);
+  const introProgress = useRef(0);
+  const startPos = useRef(new THREE.Vector3(-15, 12, 22));
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
+    if (isPlaying) {
+      introProgress.current = 1.0; // skip intro if they click play immediately
+    }
   }, [isPlaying]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (!controlsRef.current) return;
 
     if (isPlayingRef.current) {
@@ -278,10 +283,23 @@ function CinematicCameraController({
       controlsRef.current.target.lerp(targetGoal, 0.08);
       controlsRef.current.update();
     } else {
-      // When resetting or stopped, smoothly return to the stable global center overview target
-      const defaultTarget = new THREE.Vector3(0, rampH / 2, 0);
-      controlsRef.current.target.lerp(defaultTarget, 0.08);
-      controlsRef.current.update();
+      if (introProgress.current < 1.0) {
+        introProgress.current = Math.min(1.0, introProgress.current + delta * 0.55); // 1.8 second sweep
+        const t = 1 - Math.pow(1 - introProgress.current, 3); // smooth cubic ease out
+
+        const defaultTarget = new THREE.Vector3(0, rampH / 2, 0);
+        // Default camera position: side overview of the ramp
+        const endPos = new THREE.Vector3(rampLen / 2 + 1, rampH / 2 + 1, 4.5);
+
+        state.camera.position.lerpVectors(startPos.current, endPos, t);
+        controlsRef.current.target.lerp(defaultTarget, t);
+        controlsRef.current.update();
+      } else {
+        // When resetting or stopped, smoothly return to the stable global center overview target
+        const defaultTarget = new THREE.Vector3(0, rampH / 2, 0);
+        controlsRef.current.target.lerp(defaultTarget, 0.08);
+        controlsRef.current.update();
+      }
     }
   });
 

@@ -3,7 +3,7 @@ import { COLORS } from '../utils/constants';
 import { ElectrostaticsCalculator, PointCharge } from '../physics/ElectrostaticsCalculator';
 import { store } from '../store/store';
 import { syncChargesFromEngine, updateNetForce, setPlaying } from '../store/electroSlice';
-import { EVENT_ADD_CHARGE, EVENT_RESET_ELECTRO } from '../components/panels/ElectrostaticsPanel';
+import { EVENT_ADD_CHARGE, EVENT_RESET_ELECTRO } from '../components/panels/MiroLeftPanel';
 
 interface ChargeBody {
   id: string;

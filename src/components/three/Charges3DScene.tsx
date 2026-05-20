@@ -181,9 +181,17 @@ function ElectroPhysicsLoop({
   const velRef = useRef(charges.map(() => ({ vx: 0, vy: 0 })));
 
   useEffect(() => {
-    posRef.current = charges.map(c => ({ ...c }));
-    velRef.current = charges.map(() => ({ vx: 0, vy: 0 }));
-  }, [charges.length]);
+    if (!isPlaying) {
+      posRef.current = charges.map(c => ({ ...c }));
+      velRef.current = charges.map(() => ({ vx: 0, vy: 0 }));
+    } else {
+      // If playing but length changed (e.g. added/deleted mid-play), we must re-sync
+      if (posRef.current.length !== charges.length) {
+        posRef.current = charges.map(c => ({ ...c }));
+        velRef.current = charges.map(() => ({ vx: 0, vy: 0 }));
+      }
+    }
+  }, [charges, isPlaying]);
 
   useFrame((_, delta) => {
     // 1. If playing, step the physics simulation
@@ -287,29 +295,37 @@ function ElectroPhysicsLoop({
                 c2.y -= ny * overlap * 0.5;
               }
 
-              // 2. Elastic bounce velocity reflection along the collision normal
+              // 2. Collision velocity resolution
               const rvx = c1.vx - c2.vx;
               const rvy = c1.vy - c2.vy;
               const velAlongNormal = rvx * nx + rvy * ny;
 
               if (velAlongNormal < 0) {
-                const restitution = 0.25; // damped elastic bounce so they rest beautifully
+                const attract = c1.charge * c2.charge < 0;
+                const restitution = attract ? 0.0 : 0.25; // Perfectly inelastic stickiness for attracting charges
                 const impulse = -(1 + restitution) * velAlongNormal;
 
                 if (c1.isStatic && !c2.isStatic) {
                   c2.vx -= impulse * nx;
                   c2.vy -= impulse * ny;
+                  if (attract) { c2.vx = 0; c2.vy = 0; }
                 } else if (!c1.isStatic && c2.isStatic) {
                   c1.vx += impulse * nx;
                   c1.vy += impulse * ny;
+                  if (attract) { c1.vx = 0; c1.vy = 0; }
                 } else if (!c1.isStatic && !c2.isStatic) {
                   c1.vx += impulse * nx * 0.5;
                   c1.vy += impulse * ny * 0.5;
                   c2.vx -= impulse * nx * 0.5;
                   c2.vy -= impulse * ny * 0.5;
+                  if (attract) {
+                    c1.vx = 0; c1.vy = 0;
+                    c2.vx = 0; c2.vy = 0;
+                  }
                 }
               }
             }
+
           }
         }
       }
@@ -354,6 +370,37 @@ function ElectroPhysicsLoop({
   return null;
 }
 
+function CinematicIntroController() {
+  const controlsRef = useRef<any>(null);
+  const progressRef = useRef(0);
+  const startPos = useRef(new THREE.Vector3(-15, 12, 22));
+  const endPos = useRef(new THREE.Vector3(0, 5, 15));
+
+  useFrame((state, delta) => {
+    if (!controlsRef.current) return;
+
+    if (progressRef.current < 1) {
+      progressRef.current = Math.min(1.0, progressRef.current + delta * 0.55); // 1.8 second sweep
+      // Smooth cubic ease out
+      const t = 1 - Math.pow(1 - progressRef.current, 3);
+      
+      state.camera.position.lerpVectors(startPos.current, endPos.current, t);
+      controlsRef.current.target.lerp(new THREE.Vector3(0, 0.5, 0), t);
+      controlsRef.current.update();
+    }
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      target={[0, 0.5, 0]}
+      minDistance={3}
+      maxDistance={30}
+      makeDefault
+    />
+  );
+}
+
 // ─── Main Charges 3D Scene ─────────────────────────────────────────
 export default function Charges3DScene() {
   const dispatch = useDispatch();
@@ -394,8 +441,8 @@ export default function Charges3DScene() {
 
       {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[40, 40]} />
-        <meshStandardMaterial color="#050a14" roughness={1} />
+         <planeGeometry args={[40, 40]} />
+         <meshStandardMaterial color="#050a14" roughness={1} />
       </mesh>
       <gridHelper args={[40, 40, '#1e293b', '#0f172a']} position={[0, 0.001, 0]} />
 
@@ -410,7 +457,7 @@ export default function Charges3DScene() {
         />
       ))}
 
-      <OrbitControls target={[0, 0.5, 0]} minDistance={3} maxDistance={30} makeDefault />
+      <CinematicIntroController />
     </>
   );
 }

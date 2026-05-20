@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { store } from '../store/store';
 import { updatePhysicsData } from '../store/freeFallSlice';
-import { EVENT_RESET_FREEFALL } from '../components/panels/FreeFallPanel';
+import { EVENT_RESET_FREEFALL } from '../components/panels/MiroLeftPanel';
 
 const PLANET_THEMES = {
   earth: {

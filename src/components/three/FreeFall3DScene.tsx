@@ -175,6 +175,38 @@ function PhysicsBall({
   );
 }
 
+function CinematicIntroController() {
+  const controlsRef = useRef<any>(null);
+  const progressRef = useRef(0);
+  const startPos = useRef(new THREE.Vector3(-12, 16, 20));
+  const endPos = useRef(new THREE.Vector3(0, 5, 12));
+
+  useFrame((state, delta) => {
+    if (!controlsRef.current) return;
+
+    if (progressRef.current < 1) {
+      progressRef.current = Math.min(1.0, progressRef.current + delta * 0.55); // 1.8 second sweep
+      // Smooth cubic ease out
+      const t = 1 - Math.pow(1 - progressRef.current, 3);
+      
+      state.camera.position.lerpVectors(startPos.current, endPos.current, t);
+      controlsRef.current.target.lerp(new THREE.Vector3(0, 5, 0), t);
+      controlsRef.current.update();
+    }
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      target={[0, 5, 0]}
+      minDistance={3}
+      maxDistance={40}
+      enablePan={false}
+      makeDefault
+    />
+  );
+}
+
 // ─── Main Scene (no Canvas, used INSIDE a Canvas) ─────────────────
 export default function FreeFall3DScene() {
   const dispatch = useDispatch();
@@ -182,6 +214,8 @@ export default function FreeFall3DScene() {
 
   const simTimeRef = useRef(0);
   const isPlayingRef = useRef(false);
+  const yRef = useRef(ff.height);
+  const vyRef = useRef(0);
 
   // Keep ref in sync with redux
   useEffect(() => { isPlayingRef.current = ff.isPlaying; }, [ff.isPlaying]);
@@ -206,27 +240,53 @@ export default function FreeFall3DScene() {
     simTimeRef.current = 0;
   }, [ff.planet, ff.height]);
 
+  // Sync refs when not playing or height changes
+  useEffect(() => {
+    if (!ff.isPlaying) {
+      yRef.current = ff.height;
+      vyRef.current = 0;
+      simTimeRef.current = 0;
+    }
+  }, [ff.isPlaying, ff.height]);
+
   // Physics loop via useFrame
   function PhysicsLoop() {
     useFrame((_, delta) => {
       if (!isPlayingRef.current) return;
-      simTimeRef.current += delta;
+      
+      const dt = Math.min(delta, 0.03); // Clamp delta to avoid unstable jumps on tab switcher or drop
+      simTimeRef.current += dt;
       const t = simTimeRef.current;
       const g = ff.gravity;
-      const h0 = ff.height;
-      let currentY = h0 - 0.5 * g * t * t;
-      let vel = g * t;
-      if (currentY <= 0) {
-        currentY = 0;
-        vel = Math.sqrt(2 * g * h0);
-        simTimeRef.current = 0;
-        dispatch(setPlaying(false));
+
+      // Euler-Cromer physical integration step
+      vyRef.current -= g * dt;
+      yRef.current += vyRef.current * dt;
+
+      // Handle bounce collision on the ground
+      if (yRef.current <= 0) {
+        yRef.current = 0;
+        // Bounce! (0.65 coefficient of restitution for a perfect natural feel)
+        vyRef.current = -vyRef.current * 0.65;
+
+        // If bounce velocity is very low, settle the ball down
+        if (Math.abs(vyRef.current) < 1.0) {
+          vyRef.current = 0;
+          dispatch(setPlaying(false));
+        }
       }
-      const pe = ff.mass * g * currentY;
-      const ke = 0.5 * ff.mass * vel * vel;
+
+      const velReport = Math.abs(vyRef.current);
+      const pe = ff.mass * g * yRef.current;
+      const ke = 0.5 * ff.mass * vyRef.current * vyRef.current;
+
       dispatch(updatePhysicsData({
-        time: t, y: currentY, velocity: vel,
-        potentialEnergy: pe, kineticEnergy: ke, totalEnergy: pe + ke
+        time: t, 
+        y: yRef.current, 
+        velocity: velReport,
+        potentialEnergy: pe, 
+        kineticEnergy: ke, 
+        totalEnergy: pe + ke
       }));
     });
     return null;
@@ -235,19 +295,25 @@ export default function FreeFall3DScene() {
   const handleDragStart = useCallback(() => {
     dispatch(setPlaying(false));
     simTimeRef.current = 0;
+    vyRef.current = 0;
   }, [dispatch]);
 
   const handleDrag = useCallback((newNorm: number) => {
     const newH = Math.round(newNorm * maxH);
     const clamped = Math.max(10, Math.min(500, newH));
+    yRef.current = clamped;
+    vyRef.current = 0;
     dispatch({ type: 'freefall/setHeight', payload: clamped });
     dispatch(updatePhysicsData({
-      time: 0, y: clamped, velocity: 0,
+      time: 0, 
+      y: clamped, 
+      velocity: 0,
       potentialEnergy: ff.mass * ff.gravity * clamped,
       kineticEnergy: 0,
       totalEnergy: ff.mass * ff.gravity * clamped,
     }));
   }, [dispatch, ff.mass, ff.gravity, maxH]);
+
 
   return (
     <>
@@ -289,13 +355,7 @@ export default function FreeFall3DScene() {
       />
 
       {/* Camera Control */}
-      <OrbitControls
-        target={[0, 5, 0]}
-        minDistance={3}
-        maxDistance={40}
-        enablePan={false}
-        makeDefault
-      />
+      <CinematicIntroController />
     </>
   );
 }

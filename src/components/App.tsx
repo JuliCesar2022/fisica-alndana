@@ -6,13 +6,7 @@ import { updateChargeValue, addCharge, toggleStatic, deleteCharge, resetCharges 
 import PhaserGame from './PhaserGame';
 import Canvas3D from './Canvas3D';
 import DashboardMenu from './DashboardMenu';
-import RampPanel from './panels/RampPanel';
-import RampChartsPanel from './panels/RampChartsPanel';
-import ElectrostaticsPanel, { EVENT_ADD_CHARGE, EVENT_RESET_ELECTRO } from './panels/ElectrostaticsPanel';
-import CircuitPanel from './panels/CircuitPanel';
-import FreeFallPanel from './panels/FreeFallPanel';
-import FreeFallChartsPanel from './panels/FreeFallChartsPanel';
-import FormulaPanel from './panels/FormulaPanel';
+import MiroLeftPanel, { EVENT_ADD_CHARGE, EVENT_RESET_ELECTRO } from './panels/MiroLeftPanel';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -34,7 +28,6 @@ const Header = () => {
       <div className="top-bar-left">
         <div className="logo"><Atom size={24} color="#3b82f6" /></div>
         <h1>Laboratorio de Física - Miguel Aldana</h1>
-        <span className="badge">ABP</span>
       </div>
 
       <nav className="top-bar-center">
@@ -79,6 +72,46 @@ export default function App() {
     isStatic: boolean;
     chargeVal: number;
   } | null>(null);
+
+  const [loading, setLoading] = React.useState(() => {
+    return !sessionStorage.getItem('has_loaded_before');
+  });
+  const [loadingFade, setLoadingFade] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const [statusText, setStatusText] = React.useState('Inicializando simuladores...');
+
+  React.useEffect(() => {
+    if (!loading) return;
+    const phrases = [
+      { min: 0, text: 'Inicializando entorno físico...' },
+      { min: 20, text: 'Cargando solucionadores de ecuaciones diferenciales...' },
+      { min: 45, text: 'Sincronizando mallas de renderizado 3D...' },
+      { min: 70, text: 'Equilibrando fuerzas gravitatorias...' },
+      { min: 90, text: 'Optimizando telemetría en tiempo real...' },
+      { min: 100, text: '¡Entorno Científico Listo!' }
+    ];
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setLoadingFade(true);
+            setTimeout(() => {
+              setLoading(false);
+              sessionStorage.setItem('has_loaded_before', 'true');
+            }, 800);
+          }, 500);
+          return 100;
+        }
+        const next = prev + Math.floor(Math.random() * 8) + 2;
+        const bounded = Math.min(next, 100);
+        const matched = phrases.filter(p => bounded >= p.min).pop();
+        if (matched) setStatusText(matched.text);
+        return bounded;
+      });
+    }, 90);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   React.useEffect(() => {
     const handleShowMenu = (e: any) => {
@@ -138,6 +171,32 @@ export default function App() {
 
   return (
     <>
+      {loading && (
+        <div className={`loading-screen ${loadingFade ? 'fade-out' : ''}`}>
+          <div className="loading-grid" />
+          <div className="loading-glow-orb" />
+          
+          <div className="loading-logo-box">
+            <div className="loading-orbit loading-orbit-1" />
+            <div className="loading-orbit loading-orbit-2" />
+            <Atom className="loading-center-atom" size={56} />
+          </div>
+
+          <div className="loading-brand">
+            <h2 className="loading-title">Laboratorio de Física</h2>
+            <p className="loading-subtitle">Miguel Aldana • Entorno Científico 3D</p>
+          </div>
+
+          <div className="loading-percentage">{progress}%</div>
+
+          <div className="loading-bar-container">
+            <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
+          </div>
+
+          <div className="loading-status-text">{statusText}</div>
+        </div>
+      )}
+
       {/* PhaserGame only for circuits — the rest use the R3F Canvas3D */}
       <PhaserGame />
       <Canvas3D />
@@ -151,10 +210,10 @@ export default function App() {
           <div id="ui-overlay">
             <Header />
             <Routes>
-              <Route path="/ramp" element={<><RampPanel /><RampChartsPanel /><FormulaPanel type="ramp" /></>} />
-              <Route path="/freefall" element={<><FreeFallPanel /><FreeFallChartsPanel /><FormulaPanel type="freefall" /></>} />
-              <Route path="/electrostatics" element={<><ElectrostaticsPanel /><FormulaPanel type="electro" /></>} />
-              <Route path="/circuit" element={<><CircuitPanel /><FormulaPanel type="circuit" /></>} />
+              <Route path="/ramp" element={<MiroLeftPanel />} />
+              <Route path="/freefall" element={<MiroLeftPanel />} />
+              <Route path="/electrostatics" element={<MiroLeftPanel />} />
+              <Route path="/circuit" element={<MiroLeftPanel />} />
             </Routes>
           </div>
         } />
