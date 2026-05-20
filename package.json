@@ -17,7 +17,10 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "@reduxjs/toolkit": "^2.12.0",
+    "@types/three": "^0.184.1",
     "chart.js": "^4.5.1",
     "katex": "^0.16.47",
     "lucide-react": "^1.16.0",
@@ -25,6 +28,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-redux": "^9.3.0",
-    "react-router-dom": "^7.15.1"
+    "react-router-dom": "^7.15.1",
+    "three": "^0.184.0"
   }
 }

@@ -17,7 +17,10 @@ interface ElectroState {
 }
 
 const initialState: ElectroState = {
-  charges: [],
+  charges: [
+    { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0 },
+    { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0 },
+  ],
   selectedChargeId: null,
   isPlaying: false,
   netForce: null,
@@ -38,14 +41,48 @@ export const electroSlice = createSlice({
       if (c) c.charge = action.payload.charge;
     },
     
-    // Phaser dispatches this so React can show the list/formula correctly
+    // Phaser/R3F dispatches this so React can show the list/formula correctly
     syncChargesFromEngine: (state, action: PayloadAction<PointChargeState[]>) => {
       state.charges = action.payload;
     },
     
-    // Phaser dispatches this on update() so React formula panel can display the net force
+    // Phaser/R3F dispatches this on update() so React formula panel can display the net force
     updateNetForce: (state, action: PayloadAction<number | null>) => {
       state.netForce = action.payload;
+    },
+
+    // Dynamic React/Redux charge modifiers
+    addCharge: (state, action: PayloadAction<{ charge: number; x: number; y: number; isStatic?: boolean }>) => {
+      const id = `charge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      state.charges.push({
+        id,
+        charge: action.payload.charge,
+        isStatic: action.payload.isStatic ?? false,
+        x: action.payload.x,
+        y: action.payload.y,
+      });
+    },
+
+    toggleStatic: (state, action: PayloadAction<string>) => {
+      const c = state.charges.find(ch => ch.id === action.payload);
+      if (c) c.isStatic = !c.isStatic;
+    },
+
+    deleteCharge: (state, action: PayloadAction<string>) => {
+      state.charges = state.charges.filter(ch => ch.id !== action.payload);
+      if (state.selectedChargeId === action.payload) {
+        state.selectedChargeId = null;
+      }
+    },
+
+    resetCharges: (state) => {
+      state.charges = [
+        { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0 },
+        { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0 },
+      ];
+      state.selectedChargeId = null;
+      state.isPlaying = false;
+      state.netForce = null;
     }
   }
 });
@@ -56,7 +93,11 @@ export const {
   setVacuumMode,
   updateChargeValue, 
   syncChargesFromEngine, 
-  updateNetForce 
+  updateNetForce,
+  addCharge,
+  toggleStatic,
+  deleteCharge,
+  resetCharges
 } = electroSlice.actions;
 
 export default electroSlice.reducer;

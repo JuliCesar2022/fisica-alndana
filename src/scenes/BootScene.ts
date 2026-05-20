@@ -15,7 +15,9 @@ export class BootScene extends Phaser.Scene {
     const sceneMap: Record<string, string> = {
       menu: 'MenuScene',
       ramp: 'InclinedPlaneScene',
+      freefall: 'FreeFallScene',
       electrostatics: 'ElectrostaticsScene',
+      circuit: 'CircuitScene',
     };
 
     const targetScene = sceneMap[hash] || 'MenuScene';

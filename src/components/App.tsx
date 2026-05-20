@@ -2,12 +2,16 @@ import React, { useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Triangle, CircleDashed, Battery, Atom, Orbit, Pin, PinOff, Trash2, RefreshCw, Zap } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { updateChargeValue } from '../store/electroSlice';
+import { updateChargeValue, addCharge, toggleStatic, deleteCharge, resetCharges } from '../store/electroSlice';
 import PhaserGame from './PhaserGame';
+import Canvas3D from './Canvas3D';
+import DashboardMenu from './DashboardMenu';
 import RampPanel from './panels/RampPanel';
 import RampChartsPanel from './panels/RampChartsPanel';
-import ElectrostaticsPanel from './panels/ElectrostaticsPanel';
+import ElectrostaticsPanel, { EVENT_ADD_CHARGE, EVENT_RESET_ELECTRO } from './panels/ElectrostaticsPanel';
 import CircuitPanel from './panels/CircuitPanel';
+import FreeFallPanel from './panels/FreeFallPanel';
+import FreeFallChartsPanel from './panels/FreeFallChartsPanel';
 import FormulaPanel from './panels/FormulaPanel';
 
 const Header = () => {
@@ -17,7 +21,7 @@ const Header = () => {
   const [toastMsg, setToastMsg] = React.useState('');
 
   const handleNav = (path: string, key: string) => {
-    if (['/freefall', '/collision', '/pendulum'].includes(path)) {
+    if (['/collision', '/pendulum'].includes(path)) {
       setToastMsg('Esta simulación estará disponible próximamente.');
       setTimeout(() => setToastMsg(''), 3000);
       return;
@@ -40,7 +44,7 @@ const Header = () => {
         <button className={`nav-btn ${location.pathname === '/ramp' ? 'active' : ''}`} onClick={() => handleNav('/ramp', 'ramp')}>
           <Triangle className="nav-icon" size={16} /> Rampa
         </button>
-        <button className={`nav-btn disabled`} onClick={() => handleNav('/freefall', 'freefall')}>
+         <button className={`nav-btn ${location.pathname === '/freefall' ? 'active' : ''}`} onClick={() => handleNav('/freefall', 'freefall')}>
           <CircleDashed className="nav-icon" size={16} /> Caída Libre
         </button>
         <button className={`nav-btn ${location.pathname === '/electrostatics' ? 'active' : ''}`} onClick={() => handleNav('/electrostatics', 'electrostatics')}>
@@ -93,31 +97,68 @@ export default function App() {
       setContextMenu(null);
     };
 
+    const handleAddCharge = (e: any) => {
+      const chargeVal = e.detail;
+      // Position inside bounds (px-space: -200 to 200, which maps to -2.5 to 2.5 in 3D wx = x/80)
+      const rx = (Math.random() - 0.5) * 160;
+      const ry = (Math.random() - 0.5) * 160;
+      dispatch(addCharge({ charge: chargeVal, x: rx, y: ry, isStatic: false }));
+    };
+
+    const handleResetElectro = () => {
+      dispatch(resetCharges());
+    };
+
+    const handleToggleStatic = (e: any) => {
+      dispatch(toggleStatic(e.detail));
+    };
+
+    const handleDeleteCharge = (e: any) => {
+      dispatch(deleteCharge(e.detail));
+    };
+
     window.addEventListener('evt_show_charge_context_menu', handleShowMenu);
     window.addEventListener('click', handleCloseMenu);
     window.addEventListener('pointerdown', handleCloseMenu);
+    window.addEventListener(EVENT_ADD_CHARGE, handleAddCharge);
+    window.addEventListener(EVENT_RESET_ELECTRO, handleResetElectro);
+    window.addEventListener('evt_toggle_static', handleToggleStatic);
+    window.addEventListener('evt_delete_charge', handleDeleteCharge);
 
     return () => {
       window.removeEventListener('evt_show_charge_context_menu', handleShowMenu);
       window.removeEventListener('click', handleCloseMenu);
       window.removeEventListener('pointerdown', handleCloseMenu);
+      window.removeEventListener(EVENT_ADD_CHARGE, handleAddCharge);
+      window.removeEventListener(EVENT_RESET_ELECTRO, handleResetElectro);
+      window.removeEventListener('evt_toggle_static', handleToggleStatic);
+      window.removeEventListener('evt_delete_charge', handleDeleteCharge);
     };
-  }, []);
+  }, [dispatch]);
 
   return (
     <>
+      {/* PhaserGame only for circuits — the rest use the R3F Canvas3D */}
       <PhaserGame />
-      
-      <div id="ui-overlay">
-        <Header />
-        
-        <Routes>
-          <Route path="/" element={<div />} /> {/* Menu Scene handles its own UI inside canvas currently, or we can overlay */}
-          <Route path="/ramp" element={<><RampPanel /><RampChartsPanel /><FormulaPanel type="ramp" /></>} />
-          <Route path="/electrostatics" element={<><ElectrostaticsPanel /><FormulaPanel type="electro" /></>} />
-          <Route path="/circuit" element={<><CircuitPanel /><FormulaPanel type="circuit" /></>} />
-        </Routes>
-      </div>
+      <Canvas3D />
+
+      <Routes>
+        {/* Menu — full-screen, no header overlay */}
+        <Route path="/" element={<DashboardMenu />} />
+
+        {/* 3D + 2D panels overlay */}
+        <Route path="/*" element={
+          <div id="ui-overlay">
+            <Header />
+            <Routes>
+              <Route path="/ramp" element={<><RampPanel /><RampChartsPanel /><FormulaPanel type="ramp" /></>} />
+              <Route path="/freefall" element={<><FreeFallPanel /><FreeFallChartsPanel /><FormulaPanel type="freefall" /></>} />
+              <Route path="/electrostatics" element={<><ElectrostaticsPanel /><FormulaPanel type="electro" /></>} />
+              <Route path="/circuit" element={<><CircuitPanel /><FormulaPanel type="circuit" /></>} />
+            </Routes>
+          </div>
+        } />
+      </Routes>
 
       {contextMenu && contextMenu.visible && (
         <div 

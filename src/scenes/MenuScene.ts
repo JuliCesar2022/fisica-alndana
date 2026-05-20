@@ -47,7 +47,7 @@ export class MenuScene extends Phaser.Scene {
       description: 'Gravedad, velocidad terminal, resistencia',
       color: 0x06b6d4,
       sceneKey: 'FreeFallScene',
-      available: false,
+      available: true,
     },
     {
       key: 'collision',

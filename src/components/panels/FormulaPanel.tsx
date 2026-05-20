@@ -7,7 +7,7 @@ import katex from 'katex';
 import { MATERIALS } from '../../utils/constants';
 
 interface FormulaPanelProps {
-  type: 'ramp' | 'electro' | 'circuit';
+  type: 'ramp' | 'electro' | 'circuit' | 'freefall';
 }
 
 export default function FormulaPanel({ type }: FormulaPanelProps) {
@@ -15,8 +15,9 @@ export default function FormulaPanel({ type }: FormulaPanelProps) {
   const [showModal, setShowModal] = useState(false);
 
   const ramp = useSelector((s: RootState) => s.ramp);
-  const electro = useSelector((s: RootState) => s.electrostatics);
-  const circuit = useSelector((s: RootState) => s.circuit);
+  const electro = useSelector((state: RootState) => state.electrostatics);
+  const circuit = useSelector((state: RootState) => state.circuit);
+  const freefall = useSelector((state: RootState) => state.freefall);
 
   // Helper to render KaTeX to React HTML dynamically
   const math = (expr: string, block = false) => {
@@ -383,8 +384,48 @@ export default function FormulaPanel({ type }: FormulaPanelProps) {
     );
   };
 
+  const renderFreeFall = () => {
+    const { height, gravity, mass } = freefall;
+    const t_total = Math.sqrt((2 * height) / gravity);
+    const v_final = gravity * t_total;
+
+    return (
+      <>
+        <div className="formula-row">
+          <span className="formula-name" style={{ color: '#3b82f6' }}>Tiempo de Caída (t)</span>
+          <span className="formula-value">{t_total.toFixed(2)} s</span>
+        </div>
+        <div className="formula-row">
+          <span className="formula-name" style={{ color: '#10b981' }}>Vel. Final (v_f)</span>
+          <span className="formula-value">{v_final.toFixed(2)} m/s</span>
+        </div>
+        <div className="formula-row">
+          <span className="formula-name" style={{ color: '#eab308' }}>Energía Potencial (E_p)</span>
+          <span className="formula-value">{(mass * gravity * height).toFixed(1)} J</span>
+        </div>
+
+        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+          <div style={{ fontSize: '11px', color: '#3b82f6' }}>{math(`t = \\sqrt{\\frac{2h}{g}} = \\sqrt{\\frac{2 \\cdot ${height}}{${gravity}}} = ${t_total.toFixed(2)}\\text{ s}`, true)}</div>
+          <div style={{ fontSize: '11px', color: '#10b981' }}>{math(`v_f = g \\cdot t = ${gravity} \\cdot ${t_total.toFixed(2)} = ${v_final.toFixed(2)}\\text{ m/s}`, true)}</div>
+          <div style={{ fontSize: '11px', color: '#eab308' }}>{math(`E_p = m \\cdot g \\cdot h = ${mass} \\cdot ${gravity} \\cdot ${height} = ${(mass * gravity * height).toFixed(1)}\\text{ J}`, true)}</div>
+        </div>
+      </>
+    );
+  };
+
   return (
-    <aside className={`panel glass-panel ${collapsed ? 'collapsed' : ''}`} style={{ position: 'absolute', zIndex: 10, left: '20px', bottom: '20px', minWidth: '380px' }}>
+    <aside 
+      id="formula-panel" 
+      className={`panel glass-panel ${collapsed ? 'collapsed' : ''}`}
+      style={{
+        position: 'absolute',
+        left: '20px',
+        bottom: '20px',
+        width: '380px',
+        maxWidth: '380px',
+        zIndex: 10
+      }}
+    >
       <div className="panel-header">
         <h2><Sigma size={16} /> Fórmulas</h2>
         <button className="panel-toggle" onClick={() => setCollapsed(!collapsed)}>
@@ -393,7 +434,7 @@ export default function FormulaPanel({ type }: FormulaPanelProps) {
       </div>
       {!collapsed && (
         <div className="panel-content">
-          {type === 'ramp' ? renderRamp() : type === 'electro' ? renderElectro() : renderCircuit()}
+          {type === 'ramp' ? renderRamp() : type === 'electro' ? renderElectro() : type === 'circuit' ? renderCircuit() : renderFreeFall()}
         </div>
       )}
     </aside>

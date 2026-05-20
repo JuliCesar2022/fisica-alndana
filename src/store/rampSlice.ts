@@ -29,6 +29,8 @@ interface RampState {
     kineticEnergy: number;
     potentialEnergy: number;
     totalEnergy: number;
+    onRamp: boolean;
+    onGround: boolean;
     s1Time: number | null;
     s2Time: number | null;
     s3Time: number | null;
@@ -52,6 +54,7 @@ const initialState: RampState = {
   },
   state: {
     time: 0, velocity: 0, position: 0, height: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0,
+    onRamp: true, onGround: false,
     s1Time: null, s2Time: null, s3Time: null, s4Time: null
   }
 };
