@@ -196,7 +196,7 @@ export class ElectrostaticsScene extends Phaser.Scene {
   }
 
   private syncChargesToRedux() {
-    const arr = this.charges.map(c => ({ id: c.id, charge: c.charge, isStatic: c.body.isStatic(), x: c.body.x, y: c.body.y }));
+    const arr = this.charges.map(c => ({ id: c.id, charge: c.charge, isStatic: c.body.isStatic(), x: c.body.x, y: c.body.y, z: 0 }));
     store.dispatch(syncChargesFromEngine(arr));
   }
 
@@ -231,7 +231,7 @@ export class ElectrostaticsScene extends Phaser.Scene {
     this.drawGrid(this.cameras.main.width, this.cameras.main.height);
 
     const allStates: PointCharge[] = this.charges.map(c => ({
-      id: c.id, charge: c.charge, x: c.body.x, y: c.body.y, isStatic: c.body.isStatic()
+      id: c.id, charge: c.charge, x: c.body.x, y: c.body.y, z: 0, isStatic: c.body.isStatic()
     }));
 
     this.drawSelectionLines();
@@ -239,7 +239,7 @@ export class ElectrostaticsScene extends Phaser.Scene {
     let selNetForce = null;
 
     for (const c of this.charges) {
-      const netForce = this.calculator.calculateNetForce({ id: c.id, charge: c.charge, x: c.body.x, y: c.body.y, isStatic: c.body.isStatic() }, allStates);
+      const netForce = this.calculator.calculateNetForce({ id: c.id, charge: c.charge, x: c.body.x, y: c.body.y, z: 0, isStatic: c.body.isStatic() }, allStates);
 
       if (this.isPlaying && !c.body.isStatic()) {
         const matterForceScale = 0.0001; 

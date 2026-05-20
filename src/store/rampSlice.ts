@@ -47,7 +47,7 @@ const initialState: RampState = {
   customFriction: 0.25,
   customMaterialName: 'Mi Material',
   rampLength: PHYSICS_DEFAULTS.rampLength,
-  sensorDistances: [0.0, 0.0566, 0.1482, 0.2187],
+  sensorDistances: [0.2, 0.8, 1.4, 1.9],
   
   forces: {
     weight: 0, normalForce: 0, parallelForce: 0, frictionForce: 0, netForce: 0, acceleration: 0
@@ -70,7 +70,17 @@ export const rampSlice = createSlice({
     setPlaying: (state, action: PayloadAction<boolean>) => { state.isPlaying = action.payload; },
     setCustomFriction: (state, action: PayloadAction<number>) => { state.customFriction = action.payload; },
     setCustomMaterialName: (state, action: PayloadAction<string>) => { state.customMaterialName = action.payload; },
-    setRampLength: (state, action: PayloadAction<number>) => { state.rampLength = action.payload; },
+    setRampLength: (state, action: PayloadAction<number>) => { 
+      const newLength = action.payload;
+      const oldLength = state.rampLength;
+      state.rampLength = newLength;
+      
+      // Adapt sensor positions proportionally to the new ramp length
+      if (oldLength > 0) {
+        const scale = newLength / oldLength;
+        state.sensorDistances = state.sensorDistances.map(d => Number((d * scale).toFixed(4)));
+      }
+    },
     updateSensorDistance: (state, action: PayloadAction<{index: number, distance: number}>) => {
       state.sensorDistances[action.payload.index] = action.payload.distance;
     },

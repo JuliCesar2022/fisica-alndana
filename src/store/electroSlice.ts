@@ -6,6 +6,7 @@ export interface PointChargeState {
   isStatic: boolean;
   x: number;
   y: number;
+  z: number;
 }
 
 interface ElectroState {
@@ -18,8 +19,8 @@ interface ElectroState {
 
 const initialState: ElectroState = {
   charges: [
-    { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0 },
-    { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0 },
+    { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0, z: 0 },
+    { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0, z: 0 },
   ],
   selectedChargeId: null,
   isPlaying: false,
@@ -52,7 +53,7 @@ export const electroSlice = createSlice({
     },
 
     // Dynamic React/Redux charge modifiers
-    addCharge: (state, action: PayloadAction<{ charge: number; x: number; y: number; isStatic?: boolean }>) => {
+    addCharge: (state, action: PayloadAction<{ charge: number; x: number; y: number; z?: number; isStatic?: boolean }>) => {
       const id = `charge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       state.charges.push({
         id,
@@ -60,7 +61,17 @@ export const electroSlice = createSlice({
         isStatic: action.payload.isStatic ?? false,
         x: action.payload.x,
         y: action.payload.y,
+        z: action.payload.z ?? 0,
       });
+    },
+
+    moveCharge: (state, action: PayloadAction<{ id: string, x: number, y: number, z: number }>) => {
+      const c = state.charges.find(ch => ch.id === action.payload.id);
+      if (c) {
+        c.x = action.payload.x;
+        c.y = action.payload.y;
+        c.z = action.payload.z;
+      }
     },
 
     toggleStatic: (state, action: PayloadAction<string>) => {
@@ -77,8 +88,8 @@ export const electroSlice = createSlice({
 
     resetCharges: (state) => {
       state.charges = [
-        { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0 },
-        { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0 },
+        { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0, z: 0 },
+        { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0, z: 0 },
       ];
       state.selectedChargeId = null;
       state.isPlaying = false;
@@ -95,6 +106,7 @@ export const {
   syncChargesFromEngine, 
   updateNetForce,
   addCharge,
+  moveCharge,
   toggleStatic,
   deleteCharge,
   resetCharges

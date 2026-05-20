@@ -26,26 +26,27 @@ function FieldArrows({ charges }: { charges: PointChargeState[] }) {
       let fx = 0, fy = 0;
       for (const ch of charges) {
         const dx = px - ch.x / 80;
-        const dy = py - ch.y / 80;
-        const r2 = dx * dx + dy * dy;
+        const dz = py - ch.z / 80; // Field arrows operate on the XZ plane
+        const dy = 0.05 - ch.y / 80;
+        const r2 = dx * dx + dy * dy + dz * dz;
         if (r2 < 0.5) continue;
         const F = K_COULOMB * Math.abs(ch.charge * 1e-6) / r2;
         const sign = ch.charge > 0 ? 1 : -1;
         fx += sign * (dx / Math.sqrt(r2)) * F;
-        fy += sign * (dy / Math.sqrt(r2)) * F;
+        fy += sign * (dz / Math.sqrt(r2)) * F;
       }
       const mag = Math.sqrt(fx * fx + fy * fy);
       if (mag < 1e5) continue;
       const len = Math.min(0.6, mag * 3e-7);
       const ex = px + (fx / mag) * len;
-      const ey = py + (fy / mag) * len;
+      const ez = py + (fy / mag) * len;
       const color = mag > 1e8 ? '#f87171' : '#818cf8';
       arrows.push(
         <line key={`${xi}-${yi}`}>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
-              args={[new Float32Array([px, 0.05, py, ex, 0.05, ey]), 3]}
+              args={[new Float32Array([px, 0.05, py, ex, 0.05, ez]), 3]}
             />
           </bufferGeometry>
           <lineBasicMaterial color={color} transparent opacity={0.35} />
@@ -66,21 +67,21 @@ function ChargeSphere({
   charge: PointChargeState;
   isSelected: boolean;
   onSelect: (id: string) => void;
-  onDragEnd: (id: string, newX: number, newY: number) => void;
+  onDragEnd: (id: string, newX: number, newY: number, newZ: number) => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const { raycaster } = useThree();
   const [isDragging, setIsDragging] = useState(false);
-  const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5));
+
+  // The drag plane operates at the charge's current height (Y axis) so we only drag in X and Z
+  const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), -(charge.y / 80)));
 
   const isPos = charge.charge > 0;
   const color = isPos ? '#ef4444' : '#3b82f6';
   const glow = isPos ? '#ff6666' : '#6699ff';
 
   // Convert from px-space to 3D
-  const wx = charge.x / 80;
-  const wz = charge.y / 80;
-  const pos = new THREE.Vector3(wx, 0.5, wz);
+  const pos = new THREE.Vector3(charge.x / 80, charge.y / 80, charge.z / 80);
 
   const handlePointerDown = (e: any) => {
     e.stopPropagation();
@@ -92,14 +93,14 @@ function ChargeSphere({
     if (!isDragging) return;
     const intersect = new THREE.Vector3();
     raycaster.ray.intersectPlane(dragPlane.current, intersect);
-    if (meshRef.current) meshRef.current.position.set(intersect.x, 0.5, intersect.z);
+    if (meshRef.current) meshRef.current.position.set(intersect.x, charge.y / 80, intersect.z);
   };
 
   const handlePointerUp = (e: any) => {
     if (!isDragging) return;
     setIsDragging(false);
     if (meshRef.current) {
-      onDragEnd(charge.id, meshRef.current.position.x * 80, meshRef.current.position.z * 80);
+      onDragEnd(charge.id, meshRef.current.position.x * 80, charge.y, meshRef.current.position.z * 80);
     }
   };
 
@@ -151,8 +152,8 @@ function ForceLines({ charges }: { charges: PointChargeState[] }) {
             <bufferAttribute
               attach="attributes-position"
               args={[new Float32Array([
-                a.x / 80, 0.5, a.y / 80,
-                b.x / 80, 0.5, b.y / 80,
+                a.x / 80, a.y / 80, a.z / 80,
+                b.x / 80, b.y / 80, b.z / 80,
               ]), 3]}
             />
           </bufferGeometry>
@@ -178,17 +179,17 @@ function ElectroPhysicsLoop({
   const selectedChargeId = useSelector((s: RootState) => s.electrostatics.selectedChargeId);
   const calculatorRef = useRef(new ElectrostaticsCalculator());
   const posRef = useRef(charges.map(c => ({ ...c })));
-  const velRef = useRef(charges.map(() => ({ vx: 0, vy: 0 })));
+  const velRef = useRef(charges.map(() => ({ vx: 0, vy: 0, vz: 0 })));
 
   useEffect(() => {
     if (!isPlaying) {
       posRef.current = charges.map(c => ({ ...c }));
-      velRef.current = charges.map(() => ({ vx: 0, vy: 0 }));
+      velRef.current = charges.map(() => ({ vx: 0, vy: 0, vz: 0 }));
     } else {
       // If playing but length changed (e.g. added/deleted mid-play), we must re-sync
       if (posRef.current.length !== charges.length) {
         posRef.current = charges.map(c => ({ ...c }));
-        velRef.current = charges.map(() => ({ vx: 0, vy: 0 }));
+        velRef.current = charges.map(() => ({ vx: 0, vy: 0, vz: 0 }));
       }
     }
   }, [charges, isPlaying]);
@@ -203,6 +204,7 @@ function ElectroPhysicsLoop({
         ...c,
         vx: velRef.current[i].vx,
         vy: velRef.current[i].vy,
+        vz: velRef.current[i].vz,
         index: i
       }));
 
@@ -212,28 +214,31 @@ function ElectroPhysicsLoop({
 
         let fx = 0;
         let fy = 0;
+        let fz = 0;
 
         for (const other of posRef.current) {
           if (c.id === other.id) continue;
 
           const dx = c.x - other.x;
           const dy = c.y - other.y;
-          const distSq = dx * dx + dy * dy;
+          const dz = c.z - other.z;
+          const distSq = dx * dx + dy * dy + dz * dz;
           const dist = Math.sqrt(distSq);
 
           // Prevent force singularity by capping min distance in calculations to the physical sphere diameter (48px)
           const safeDist = Math.max(dist, 48);
           const distM = safeDist / 100; // pixels to meters scale
 
-
           // Coulomb's Law: F = k * q1 * q2 / r^2
           const forceMag = (500 * c.charge * other.charge) / (distM * distM);
 
           const nx = dx / safeDist;
           const ny = dy / safeDist;
+          const nz = dz / safeDist;
 
           fx += forceMag * nx;
           fy += forceMag * ny;
+          fz += forceMag * nz;
         }
 
         // Mass proxy from charge magnitude
@@ -241,23 +246,27 @@ function ElectroPhysicsLoop({
         const forceScale = 0.85;
         const ax = (fx * forceScale) / mass;
         const ay = (fy * forceScale) / mass;
+        const az = (fz * forceScale) / mass;
 
         const drag = 0.94; // Air resistance
         let vx = (c.vx + ax * dt) * drag;
         let vy = (c.vy + ay * dt) * drag;
+        let vz = (c.vz + az * dt) * drag;
 
         // Cap maximum velocity to completely eliminate tunneling at ultra-high accelerations
         const maxVel = 260; 
-        const velMag = Math.sqrt(vx * vx + vy * vy);
+        const velMag = Math.sqrt(vx * vx + vy * vy + vz * vz);
         if (velMag > maxVel) {
           vx = (vx / velMag) * maxVel;
           vy = (vy / velMag) * maxVel;
+          vz = (vz / velMag) * maxVel;
         }
 
         const newX = c.x + vx * dt * 45;
         const newY = c.y + vy * dt * 45;
+        const newZ = c.z + vz * dt * 45;
 
-        return { ...c, vx, vy, x: newX, y: newY };
+        return { ...c, vx, vy, vz, x: newX, y: newY, z: newZ };
       });
 
       // B. Resolve solid sphere collisions (3D sphere radius is 0.3 units, which maps to 24px, diameter = 48px)
@@ -270,32 +279,39 @@ function ElectroPhysicsLoop({
 
             const dx = c1.x - c2.x;
             const dy = c1.y - c2.y;
-            const distSq = dx * dx + dy * dy;
+            const dz = c1.z - c2.z;
+            const distSq = dx * dx + dy * dy + dz * dz;
             const dist = Math.sqrt(distSq);
 
             if (dist < diameter && dist > 0.01) {
               const overlap = diameter - dist;
               const nx = dx / dist;
               const ny = dy / dist;
+              const nz = dz / dist;
 
               // 1. Instantly push them apart (static/pinned bodies do not move)
               if (c1.isStatic && !c2.isStatic) {
                 c2.x -= nx * overlap;
                 c2.y -= ny * overlap;
+                c2.z -= nz * overlap;
               } else if (!c1.isStatic && c2.isStatic) {
                 c1.x += nx * overlap;
                 c1.y += ny * overlap;
+                c1.z += nz * overlap;
               } else if (!c1.isStatic && !c2.isStatic) {
                 c1.x += nx * overlap * 0.5;
                 c1.y += ny * overlap * 0.5;
+                c1.z += nz * overlap * 0.5;
                 c2.x -= nx * overlap * 0.5;
                 c2.y -= ny * overlap * 0.5;
+                c2.z -= nz * overlap * 0.5;
               }
 
               // 2. Collision velocity resolution
               const rvx = c1.vx - c2.vx;
               const rvy = c1.vy - c2.vy;
-              const velAlongNormal = rvx * nx + rvy * ny;
+              const rvz = c1.vz - c2.vz;
+              const velAlongNormal = rvx * nx + rvy * ny + rvz * nz;
 
               if (velAlongNormal < 0) {
                 const attract = c1.charge * c2.charge < 0;
@@ -305,19 +321,23 @@ function ElectroPhysicsLoop({
                 if (c1.isStatic && !c2.isStatic) {
                   c2.vx -= impulse * nx;
                   c2.vy -= impulse * ny;
-                  if (attract) { c2.vx = 0; c2.vy = 0; }
+                  c2.vz -= impulse * nz;
+                  if (attract) { c2.vx = 0; c2.vy = 0; c2.vz = 0; }
                 } else if (!c1.isStatic && c2.isStatic) {
                   c1.vx += impulse * nx;
                   c1.vy += impulse * ny;
-                  if (attract) { c1.vx = 0; c1.vy = 0; }
+                  c1.vz += impulse * nz;
+                  if (attract) { c1.vx = 0; c1.vy = 0; c1.vz = 0; }
                 } else if (!c1.isStatic && !c2.isStatic) {
                   c1.vx += impulse * nx * 0.5;
                   c1.vy += impulse * ny * 0.5;
+                  c1.vz += impulse * nz * 0.5;
                   c2.vx -= impulse * nx * 0.5;
                   c2.vy -= impulse * ny * 0.5;
+                  c2.vz -= impulse * nz * 0.5;
                   if (attract) {
-                    c1.vx = 0; c1.vy = 0;
-                    c2.vx = 0; c2.vy = 0;
+                    c1.vx = 0; c1.vy = 0; c1.vz = 0;
+                    c2.vx = 0; c2.vy = 0; c2.vz = 0;
                   }
                 }
               }
@@ -331,21 +351,24 @@ function ElectroPhysicsLoop({
       states = states.map((c) => {
         let newX = Math.max(-280, Math.min(280, c.x));
         let newY = Math.max(-280, Math.min(280, c.y));
+        let newZ = Math.max(-280, Math.min(280, c.z));
         let vx = c.vx;
         let vy = c.vy;
+        let vz = c.vz;
 
         if (newX === -280 || newX === 280) vx = 0;
         if (newY === -280 || newY === 280) vy = 0;
+        if (newZ === -280 || newZ === 280) vz = 0;
 
-        return { ...c, x: newX, y: newY, vx, vy };
+        return { ...c, x: newX, y: newY, z: newZ, vx, vy, vz };
       });
 
       // D. Propagate back to velRef and Redux state
       states.forEach((c) => {
-        velRef.current[c.index] = { vx: c.vx, vy: c.vy };
+        velRef.current[c.index] = { vx: c.vx, vy: c.vy, vz: c.vz };
       });
 
-      const updated = states.map(({ index, vx, vy, ...rest }) => rest);
+      const updated = states.map(({ index, vx, vy, vz, ...rest }) => rest);
       posRef.current = updated;
       onUpdate(updated);
     }
@@ -354,8 +377,8 @@ function ElectroPhysicsLoop({
     if (selectedChargeId) {
       const selC = charges.find(ch => ch.id === selectedChargeId);
       if (selC) {
-        const targetCharge = { id: selC.id, charge: selC.charge, x: selC.x, y: selC.y, isStatic: selC.isStatic };
-        const allChargesList = charges.map(ch => ({ id: ch.id, charge: ch.charge, x: ch.x, y: ch.y, isStatic: ch.isStatic }));
+        const targetCharge = { id: selC.id, charge: selC.charge, x: selC.x, y: selC.y, z: selC.z, isStatic: selC.isStatic };
+        const allChargesList = charges.map(ch => ({ id: ch.id, charge: ch.charge, x: ch.x, y: ch.y, z: ch.z, isStatic: ch.isStatic }));
         const netForce = calculatorRef.current.calculateNetForce(targetCharge, allChargesList);
         dispatch(updateNetForce(netForce.magnitude));
       }
@@ -411,8 +434,8 @@ export default function Charges3DScene() {
     dispatch(setSelectedCharge(id));
   }, [dispatch]);
 
-  const handleDragEnd = useCallback((id: string, newX: number, newY: number) => {
-    const updated = electro.charges.map(c => c.id === id ? { ...c, x: newX, y: newY } : c);
+  const handleDragEnd = useCallback((id: string, newX: number, newY: number, newZ: number) => {
+    const updated = electro.charges.map(c => c.id === id ? { ...c, x: newX, y: newY, z: newZ } : c);
     dispatch(syncChargesFromEngine(updated));
   }, [dispatch, electro.charges]);
 

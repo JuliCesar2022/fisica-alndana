@@ -72,7 +72,8 @@ import {
 import { 
   setPlaying as setElectroPlaying, 
   updateChargeValue, 
-  setVacuumMode 
+  setVacuumMode,
+  moveCharge
 } from '../../store/electroSlice';
 
 
@@ -619,27 +620,7 @@ export default function MiroLeftPanel() {
           </p>
         </div>
 
-        <div className="control-group">
-          <div className="control-label">
-            <span>Medio de Simulación</span>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-            <button 
-              className={`material-btn ${!electro.vacuumMode ? 'active' : ''}`} 
-              style={{ flex: 1, padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px' }}
-              onClick={() => dispatch(setVacuumMode(false))}
-            >
-              <CloudRain size={12} /> Atmósfera
-            </button>
-            <button 
-              className={`material-btn ${electro.vacuumMode ? 'active' : ''}`} 
-              style={{ flex: 1, padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px' }}
-              onClick={() => dispatch(setVacuumMode(true))}
-            >
-              <Sun size={12} /> Vacío
-            </button>
-          </div>
-        </div>
+
 
         {selectedCharge && (
           <div className="control-group" style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.15)' }}>
@@ -672,16 +653,25 @@ export default function MiroLeftPanel() {
                 <input 
                   type="number" 
                   value={Math.round(selectedCharge.x)} 
-                  onChange={(e) => window.dispatchEvent(new CustomEvent(EVENT_MOVE_CHARGE, { detail: { id: selectedCharge.id, x: Number(e.target.value), y: selectedCharge.y } }))}
+                  onChange={(e) => dispatch(moveCharge({ id: selectedCharge.id, x: Number(e.target.value), y: selectedCharge.y, z: selectedCharge.z }))}
                   style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <div className="control-label"><span style={{ fontSize: '9px', color: '#94a3b8' }}>Posición Y</span></div>
+                <div className="control-label"><span style={{ fontSize: '9px', color: '#94a3b8' }}>Altura (Y)</span></div>
                 <input 
                   type="number" 
                   value={Math.round(selectedCharge.y)} 
-                  onChange={(e) => window.dispatchEvent(new CustomEvent(EVENT_MOVE_CHARGE, { detail: { id: selectedCharge.id, x: selectedCharge.x, y: Number(e.target.value) } }))}
+                  onChange={(e) => dispatch(moveCharge({ id: selectedCharge.id, x: selectedCharge.x, y: Number(e.target.value), z: selectedCharge.z }))}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="control-label"><span style={{ fontSize: '9px', color: '#94a3b8' }}>Profun. (Z)</span></div>
+                <input 
+                  type="number" 
+                  value={Math.round(selectedCharge.z)} 
+                  onChange={(e) => dispatch(moveCharge({ id: selectedCharge.id, x: selectedCharge.x, y: selectedCharge.y, z: Number(e.target.value) }))}
                   style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}
                 />
               </div>

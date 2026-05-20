@@ -3,12 +3,14 @@ export interface PointCharge {
   charge: number; // µC
   x: number;      // pixels
   y: number;      // pixels
+  z: number;      // pixels
   isStatic: boolean;
 }
 
 export interface ForceVector {
   fx: number;
   fy: number;
+  fz: number;
   magnitude: number;
 }
 
@@ -24,14 +26,16 @@ export class ElectrostaticsCalculator {
   calculateNetForce(target: PointCharge, allCharges: PointCharge[]): ForceVector {
     let fx = 0;
     let fy = 0;
+    let fz = 0;
 
     for (const other of allCharges) {
       if (target.id === other.id) continue;
 
       const dx = target.x - other.x;
       const dy = target.y - other.y;
+      const dz = target.z - other.z;
       
-      const distanceSq = dx * dx + dy * dy;
+      const distanceSq = dx * dx + dy * dy + dz * dz;
       const distancePx = Math.sqrt(distanceSq);
       
       // Prevent division by zero and extreme forces when too close
@@ -50,15 +54,18 @@ export class ElectrostaticsCalculator {
       // Normalize direction vector
       const nx = dx / safeDistancePx;
       const ny = dy / safeDistancePx;
+      const nz = dz / safeDistancePx;
 
       fx += forceMag * nx;
       fy += forceMag * ny;
+      fz += forceMag * nz;
     }
 
     return {
       fx,
       fy,
-      magnitude: Math.sqrt(fx * fx + fy * fy)
+      fz,
+      magnitude: Math.sqrt(fx * fx + fy * fy + fz * fz)
     };
   }
 }
