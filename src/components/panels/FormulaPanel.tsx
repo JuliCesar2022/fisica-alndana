@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { Sigma, HelpCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
@@ -200,7 +201,7 @@ export default function FormulaPanel({ type }: FormulaPanelProps) {
         )}
 
         {/* Dynamic Reduction Modal */}
-        {showModal && (
+        {showModal && createPortal(
           <div style={{
             position: 'fixed',
             top: 0,
@@ -375,7 +376,8 @@ export default function FormulaPanel({ type }: FormulaPanelProps) {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </>
     );
