@@ -891,20 +891,62 @@ input[type="range"]::-moz-range-thumb {
 
 .loading-orbit {
   position: absolute;
-  border: 1px dashed rgba(99, 102, 241, 0.2);
+  border: 1.5px dashed rgba(99, 102, 241, 0.22);
   border-radius: 50%;
-  animation: spin 8s linear infinite;
+  box-sizing: border-box;
 }
 
-.loading-orbit-1 { width: 140px; height: 140px; transform: rotateX(70deg) rotateY(20deg); }
-.loading-orbit-2 { width: 140px; height: 140px; transform: rotateX(20deg) rotateY(70deg); animation-duration: 6s; }
+/* Glowing electron pseudo-elements */
+.loading-orbit::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+
+.loading-orbit-1 { 
+  width: 200px; 
+  height: 200px; 
+  animation: spinOrbit1 7s linear infinite; 
+}
+.loading-orbit-1::after {
+  background: #3b82f6;
+  box-shadow: 0 0 10px #3b82f6, 0 0 20px #818cf8;
+}
+
+.loading-orbit-2 { 
+  width: 200px; 
+  height: 200px; 
+  animation: spinOrbit2 5s linear infinite; 
+}
+.loading-orbit-2::after {
+  background: #ec4899;
+  box-shadow: 0 0 10px #ec4899, 0 0 20px #f43f5e;
+}
+
+.loading-orbit-3 { 
+  width: 200px; 
+  height: 200px; 
+  animation: spinOrbit3 9s linear infinite; 
+}
+.loading-orbit-3::after {
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981, 0 0 20px #34d399;
+}
 
 .loading-center-atom {
-  font-size: 64px;
+  font-size: 80px;
   color: #818cf8;
-  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.6));
-  animation: pulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 24px rgba(99, 102, 241, 0.75));
+  animation: pulseAtom 1.8s ease-in-out infinite;
+  z-index: 10;
 }
+
 
 .loading-brand {
   text-align: center;
@@ -931,21 +973,25 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .loading-bar-container {
-  width: 320px;
+  width: 200px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 99px;
   overflow: hidden;
   position: relative;
   margin-bottom: 16px;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 .loading-bar-fill {
   height: 100%;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   background: linear-gradient(90deg, #6366f1, #3b82f6, #06b6d4);
   box-shadow: 0 0 12px rgba(99, 102, 241, 0.8);
   transition: width 0.15s ease-out;
+  border-radius: 99px;
 }
 
 .loading-percentage {
@@ -964,14 +1010,43 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Animations */
-@keyframes spin {
+@keyframes spinOrbit1 {
+  from { transform: rotateX(70deg) rotateY(20deg) rotateZ(0deg); }
+  to { transform: rotateX(70deg) rotateY(20deg) rotateZ(360deg); }
+}
+
+@keyframes spinOrbit2 {
+  from { transform: rotateX(30deg) rotateY(70deg) rotateZ(360deg); }
+  to { transform: rotateX(30deg) rotateY(70deg) rotateZ(0deg); }
+}
+
+@keyframes spinOrbit3 {
+  from { transform: rotateX(45deg) rotateY(-45deg) rotateZ(0deg); }
+  to { transform: rotateX(45deg) rotateY(-45deg) rotateZ(360deg); }
+}
+
+@keyframes pulseAtom {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.7)); }
+  50% { transform: scale(1.12); filter: drop-shadow(0 0 35px rgba(99, 102, 241, 0.95)); }
+}
+
+.loading-svg-nucleus-single {
+  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.8)) drop-shadow(0 0 12px rgba(129, 140, 248, 0.4));
+  animation: rotateSingleNucleus 4s linear infinite;
+}
+
+.loading-nucleus-spark-orbit {
+  animation: spinNucleusSpark 1.6s linear infinite;
+}
+
+@keyframes rotateSingleNucleus {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+@keyframes spinNucleusSpark {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ============================================

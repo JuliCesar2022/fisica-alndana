@@ -46,9 +46,112 @@ function ForceArrow({
   );
 }
 
+// ─── Procedural Texture Generator ──────────────────────────────────
+const createProceduralTexture = (materialType: string): THREE.Texture => {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  if (materialType === 'wood') {
+    // 🪵 Wood Grain Texture
+    ctx.fillStyle = '#c2956a';
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = '#8b5a2b';
+    ctx.lineWidth = 3.5;
+    for (let i = -size; i < size * 2; i += 28) {
+      ctx.beginPath();
+      for (let y = 0; y < size; y++) {
+        const x = i + Math.sin(y * 0.025) * 12 + Math.cos(i * 0.04) * 6;
+        if (y === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  } else if (materialType === 'ice') {
+    // ❄️ Glowing Ice Texture
+    ctx.fillStyle = '#93c5fd';
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = '#e0f2fe';
+    ctx.lineWidth = 2.0;
+    for (let i = 0; i < 28; i++) {
+      ctx.beginPath();
+      let cx = Math.random() * size;
+      let cy = Math.random() * size;
+      ctx.moveTo(cx, cy);
+      for (let j = 0; j < 4; j++) {
+        cx += (Math.random() - 0.5) * 80;
+        cy += (Math.random() - 0.5) * 80;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+  } else if (materialType === 'steel') {
+    // ⚙️ Brushed Steel Texture
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, '#9ca3af');
+    grad.addColorStop(0.3, '#e5e7eb');
+    grad.addColorStop(0.5, '#6b7280');
+    grad.addColorStop(0.7, '#d1d5db');
+    grad.addColorStop(1, '#9ca3af');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 180; i++) {
+      const y = Math.random() * size;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(size, y);
+      ctx.stroke();
+    }
+  } else if (materialType === 'sandpaper') {
+    // ⏳ Sandpaper Texture (Granular Noise)
+    ctx.fillStyle = '#d6b896';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#b49c7f';
+    for (let i = 0; i < 16000; i++) {
+      const rx = Math.random() * size;
+      const ry = Math.random() * size;
+      ctx.fillRect(rx, ry, 1.8, 1.8);
+    }
+  } else if (materialType === 'rubber') {
+    // 🛞 Textured Treaded Rubber
+    ctx.fillStyle = '#2d3748';
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = '#1a202c';
+    ctx.lineWidth = 6;
+    for (let i = 0; i < size; i += 32) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0); ctx.lineTo(i, size);
+      ctx.moveTo(0, i); ctx.lineTo(size, i);
+      ctx.stroke();
+    }
+  } else {
+    // Custom/Default Grid
+    ctx.fillStyle = '#1e1b4b';
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = '#a78bfa';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < size; i += 64) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0); ctx.lineTo(i, size);
+      ctx.moveTo(0, i); ctx.lineTo(size, i);
+      ctx.stroke();
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3, 1); // scale wrapping cleanly
+  return texture;
+};
+
 // ─── Ramp Geometry ─────────────────────────────────────────────────
 function RampMesh({ angleRad, length, material }: { angleRad: number; length: number; material: string }) {
-  const color = MAT_COLORS[material] ?? '#c2956a';
   const h = Math.sin(angleRad) * length;
   const w = Math.cos(angleRad) * length;
 
@@ -59,12 +162,17 @@ function RampMesh({ angleRad, length, material }: { angleRad: number; length: nu
   shape.lineTo(0, 0);
 
   const extrudeSettings = { depth: 0.6, bevelEnabled: false };
+  const texture = React.useMemo(() => createProceduralTexture(material), [material]);
 
   return (
     <group position={[-w / 2, 0, -0.3]}>
       <mesh castShadow receiveShadow>
         <extrudeGeometry args={[shape, extrudeSettings]} />
-        <meshStandardMaterial color={color} roughness={0.7} metalness={0.1} />
+        <meshStandardMaterial 
+          map={texture} 
+          roughness={material === 'ice' ? 0.05 : material === 'steel' ? 0.15 : 0.8} 
+          metalness={material === 'steel' ? 0.95 : 0.0} 
+        />
       </mesh>
       {/* Ramp surface edge highlight */}
       <Line
@@ -78,14 +186,22 @@ function RampMesh({ angleRad, length, material }: { angleRad: number; length: nu
 
 // ─── Flat Platform ──────────────────────────────────────────────────
 function PlatformMesh({ rampW, length, material }: { rampW: number; length: number; material: string }) {
-  const color = MAT_COLORS[material] ?? '#c2956a';
+  const texture = React.useMemo(() => {
+    const tex = createProceduralTexture(material);
+    tex.repeat.set(length * 0.5, 1); // wrap nicely along length
+    return tex;
+  }, [material, length]);
   
   return (
     <group position={[rampW / 2 + length / 2, -0.05, 0]}>
       <mesh castShadow receiveShadow>
         {/* We use an extrude or box to draw the flat platform */}
         <boxGeometry args={[length, 0.1, 0.6]} />
-        <meshStandardMaterial color={color} roughness={0.7} metalness={0.1} />
+        <meshStandardMaterial 
+          map={texture} 
+          roughness={material === 'ice' ? 0.05 : material === 'steel' ? 0.15 : 0.8} 
+          metalness={material === 'steel' ? 0.95 : 0.0} 
+        />
       </mesh>
       {/* platform border highlight */}
       <Line

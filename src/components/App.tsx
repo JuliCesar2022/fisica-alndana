@@ -176,24 +176,90 @@ export default function App() {
           <div className="loading-grid" />
           <div className="loading-glow-orb" />
           
-          <div className="loading-logo-box">
-            <div className="loading-orbit loading-orbit-1" />
-            <div className="loading-orbit loading-orbit-2" />
-            <Atom className="loading-center-atom" size={56} />
+          <div className="loading-logo-box" style={{ width: '200px', height: '200px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
+            
+            {/* Real-time self-drawing SVG of the official brand logo */}
+            <svg 
+              viewBox="0 0 24 24" 
+              width="100" 
+              height="100" 
+              fill="none" 
+              stroke="#818cf8" 
+              strokeWidth="1.0" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              style={{
+                filter: 'drop-shadow(0 0 24px rgba(99, 102, 241, 0.75))',
+                animation: 'pulseAtom 2s ease-in-out infinite'
+              }}
+            >
+              {/* Custom Particle Gradients */}
+              <defs>
+                <radialGradient id="particle-grad-single" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="35%" stopColor="#818cf8" />
+                  <stop offset="70%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#4338ca" />
+                </radialGradient>
+              </defs>
+
+              {/* Single Nucleus Dot (Pulsing and glowing with living energy) - pops in at 15% progress */}
+              <g 
+                stroke="none"
+                style={{
+                  transform: `scale(${progress < 15 ? 0 : Math.min(1, (progress - 15) / 15)})`,
+                  transformOrigin: 'center',
+                  transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
+                {/* Central Nucleus Ball */}
+                <circle 
+                  cx="12" 
+                  cy="12" 
+                  r="1.8" 
+                  fill="url(#particle-grad-single)"
+                  className="loading-svg-nucleus-single"
+                  style={{ transformOrigin: 'center' }}
+                />
+                
+                {/* Tiny orbital quantum spark zipping around the single ball */}
+                <g className="loading-nucleus-spark-orbit" style={{ transformOrigin: 'center' }}>
+                  <circle 
+                    cx="12" 
+                    cy="9.2" 
+                    r="0.5" 
+                    fill="#10b981" 
+                    style={{ filter: 'drop-shadow(0 0 3px #34d399)' }} 
+                  />
+                </g>
+              </g>
+              
+              {/* First Logo Loop - draws itself at 30% to 60% progress */}
+              <path 
+                d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z" 
+                strokeDasharray="120"
+                strokeDashoffset={progress < 30 ? 120 : Math.max(0, 120 - (progress - 30) * 4)}
+                style={{
+                  transition: 'stroke-dashoffset 0.15s ease-out'
+                }}
+              />
+              
+              {/* Second Logo Loop - draws itself at 60% to 90% progress */}
+              <path 
+                d="M3.8 20.2c-2.04-2.03-.02-7.36 4.5-11.9 4.54-4.52 9.87-6.54 11.9-4.5 2.04 2.03.02 7.36-4.5 11.9-4.54 4.52-9.87 6.54-11.9 4.5Z" 
+                strokeDasharray="120"
+                strokeDashoffset={progress < 60 ? 120 : Math.max(0, 120 - (progress - 60) * 4)}
+                style={{
+                  transition: 'stroke-dashoffset 0.15s ease-out'
+                }}
+              />
+            </svg>
+            
           </div>
 
-          <div className="loading-brand">
-            <h2 className="loading-title">Laboratorio de Física</h2>
-            <p className="loading-subtitle">Miguel Aldana • Entorno Científico 3D</p>
-          </div>
-
-          <div className="loading-percentage">{progress}%</div>
-
-          <div className="loading-bar-container">
+          <div className="loading-bar-container" style={{ marginTop: '12px', zIndex: 20 }}>
             <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
           </div>
-
-          <div className="loading-status-text">{statusText}</div>
         </div>
       )}
 

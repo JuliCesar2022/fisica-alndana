@@ -221,13 +221,10 @@ function ElectroPhysicsLoop({
           const distSq = dx * dx + dy * dy;
           const dist = Math.sqrt(distSq);
 
-          // If they are in physical contact (dist < 49px), the physical contact normal force completely
-          // balances/cancels the electrostatic attraction. We skip calculation to prevent runaway forces.
-          if (dist < 49) continue;
-
-          // Prevent force singularity by capping min distance in calculations
-          const safeDist = Math.max(dist, 50);
+          // Prevent force singularity by capping min distance in calculations to the physical sphere diameter (48px)
+          const safeDist = Math.max(dist, 48);
           const distM = safeDist / 100; // pixels to meters scale
+
 
           // Coulomb's Law: F = k * q1 * q2 / r^2
           const forceMag = (500 * c.charge * other.charge) / (distM * distM);

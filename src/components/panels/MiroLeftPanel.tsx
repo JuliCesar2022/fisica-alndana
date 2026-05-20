@@ -784,48 +784,17 @@ export default function MiroLeftPanel() {
           </div>
         </div>
 
-        {/* CAD Tool Palette - Integrates Miro-Style Tools inside the Control Board! */}
+        {/* CAD Toolbar Indicator - Explains that editing tools are now on the floating sidebar! */}
         {topology === 'custom' && (
-          <div style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.15)' }}>
-            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>
-              Herramientas de Edición CAD
+          <div style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.12)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <MousePointer size={12} /> Creador de Circuitos
             </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between' }}>
-              <button 
-                onClick={() => dispatch(setActiveTool('pan'))} 
-                className={`coord-input ${activeTool === 'pan' ? 'active' : ''}`}
-                style={{ flex: 1, padding: '8px 0', border: '1px solid rgba(255,255,255,0.1)', background: activeTool === 'pan' ? '#4f46e5' : 'rgba(0,0,0,0.3)', color: '#fff', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '9px' }}
-                title="Herramienta Mover Tablero (M)"
-              >
-                <Hand size={14} /> Mover
-              </button>
-              <button 
-                onClick={() => dispatch(setActiveTool('resistor'))} 
-                className={`coord-input ${activeTool === 'resistor' ? 'active' : ''}`}
-                style={{ flex: 1, padding: '8px 0', border: '1px solid rgba(255,255,255,0.1)', background: activeTool === 'resistor' ? '#f43f5e' : 'rgba(0,0,0,0.3)', color: '#fff', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '9px' }}
-                title="Colocar Resistencia (R)"
-              >
-                <Zap size={14} /> Resistor
-              </button>
-              <button 
-                onClick={() => dispatch(setActiveTool('wire'))} 
-                className={`coord-input ${activeTool === 'wire' ? 'active' : ''}`}
-                style={{ flex: 1, padding: '8px 0', border: '1px solid rgba(255,255,255,0.1)', background: activeTool === 'wire' ? '#10b981' : 'rgba(0,0,0,0.3)', color: '#fff', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '9px' }}
-                title="Colocar Cable Directo (C)"
-              >
-                <Link size={14} style={{ transform: 'rotate(-45deg)' }} /> Cable
-              </button>
-              <button 
-                onClick={() => dispatch(setActiveTool('eraser'))} 
-                className={`coord-input ${activeTool === 'eraser' ? 'active' : ''}`}
-                style={{ flex: 1, padding: '8px 0', border: '1px solid rgba(255,255,255,0.1)', background: activeTool === 'eraser' ? '#ef4444' : 'rgba(0,0,0,0.3)', color: '#fff', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '9px' }}
-                title="Borrador (E / B)"
-              >
-                <Scissors size={14} /> Borrar
-              </button>
-            </div>
-            <p style={{ fontSize: '9px', color: '#94a3b8', margin: '8px 0 0 0', textAlign: 'center' }}>
-              Usa <b>R</b> / <b>Espacio</b> para rotar la resistencia seleccionada.
+            <p style={{ fontSize: '9.5px', color: '#94a3b8', margin: 0, lineHeight: '1.4' }}>
+              Las herramientas de edición (Mover, Resistencia, Cable, Borrar) están disponibles en la <b>barra lateral flotante</b>.
+            </p>
+            <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span>💡 Usa <b>R</b> o <b>Espacio</b> para rotar la resistencia seleccionada.</span>
             </p>
           </div>
         )}
@@ -1442,6 +1411,81 @@ export default function MiroLeftPanel() {
           )}
 
         </div>
+
+        {/* CAD Tools (Only active inside /circuit custom Creador CAD) */}
+        {path === '/circuit' && circuit.topology === 'custom' && (
+          <>
+            <div className="miro-toolbar-divider" style={{ width: '24px', height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+            
+            {/* Mover/Pan */}
+            <button
+              onClick={() => dispatch(setActiveTool('pan'))}
+              title="Herramienta Mover Tablero (M)"
+              style={{
+                width: '36px', height: '36px', borderRadius: '10px', border: 'none',
+                background: circuit.activeTool === 'pan' ? '#4f46e5' : 'transparent',
+                color: circuit.activeTool === 'pan' ? '#fff' : '#94a3b8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s ease',
+                boxShadow: circuit.activeTool === 'pan' ? '0 0 8px rgba(79, 70, 229, 0.4)' : 'none'
+              }}
+              onMouseEnter={(e) => { if (circuit.activeTool !== 'pan') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={(e) => { if (circuit.activeTool !== 'pan') e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Hand size={18} />
+            </button>
+
+            {/* Resistor */}
+            <button
+              onClick={() => dispatch(setActiveTool('resistor'))}
+              title="Colocar Resistencia (R)"
+              style={{
+                width: '36px', height: '36px', borderRadius: '10px', border: 'none',
+                background: circuit.activeTool === 'resistor' ? '#f43f5e' : 'transparent',
+                color: circuit.activeTool === 'resistor' ? '#fff' : '#94a3b8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s ease',
+                boxShadow: circuit.activeTool === 'resistor' ? '0 0 8px rgba(244, 63, 94, 0.4)' : 'none'
+              }}
+              onMouseEnter={(e) => { if (circuit.activeTool !== 'resistor') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={(e) => { if (circuit.activeTool !== 'resistor') e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Zap size={18} />
+            </button>
+
+            {/* Wire */}
+            <button
+              onClick={() => dispatch(setActiveTool('wire'))}
+              title="Colocar Cable Directo (C)"
+              style={{
+                width: '36px', height: '36px', borderRadius: '10px', border: 'none',
+                background: circuit.activeTool === 'wire' ? '#10b981' : 'transparent',
+                color: circuit.activeTool === 'wire' ? '#fff' : '#94a3b8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s ease',
+                boxShadow: circuit.activeTool === 'wire' ? '0 0 8px rgba(16, 185, 129, 0.4)' : 'none'
+              }}
+              onMouseEnter={(e) => { if (circuit.activeTool !== 'wire') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={(e) => { if (circuit.activeTool !== 'wire') e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Link size={18} style={{ transform: 'rotate(-45deg)' }} />
+            </button>
+
+            {/* Eraser */}
+            <button
+              onClick={() => dispatch(setActiveTool('eraser'))}
+              title="Borrador (E / B)"
+              style={{
+                width: '36px', height: '36px', borderRadius: '10px', border: 'none',
+                background: circuit.activeTool === 'eraser' ? '#ef4444' : 'transparent',
+                color: circuit.activeTool === 'eraser' ? '#fff' : '#94a3b8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s ease',
+                boxShadow: circuit.activeTool === 'eraser' ? '0 0 8px rgba(239, 68, 68, 0.4)' : 'none'
+              }}
+              onMouseEnter={(e) => { if (circuit.activeTool !== 'eraser') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={(e) => { if (circuit.activeTool !== 'eraser') e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Scissors size={18} />
+            </button>
+          </>
+        )}
 
         <div className="miro-toolbar-divider" style={{ width: '24px', height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
 
