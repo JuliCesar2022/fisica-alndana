@@ -86,6 +86,7 @@ export const PHYSICS_DEFAULTS = {
   gravity: 9.8,     // m/s² (from Guion.pdf)
   material: 'sandpaper',
   rampLength: 0.45, // m (45 cm from Guion.pdf)
+  sensorDistances: [0.1, 0.2, 0.3, 0.4],
 };
 
 // Scale factor: pixels per meter

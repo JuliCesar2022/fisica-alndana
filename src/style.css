@@ -228,10 +228,16 @@ html, body {
   letter-spacing: 0.1em;
 }
 
+.mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #f1f5f9;
+  cursor: pointer;
+  padding: 4px;
+}
+
 .top-bar-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1069,10 +1075,168 @@ input[type="range"]::-moz-range-thumb {
   50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
 }
 
-.miro-content-board {
+.miro-left-container {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.miro-toolbar {
+  width: 52px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 12px;
+  pointer-events: auto;
+  height: fit-content;
+  flex-shrink: 0;
+}
+
+.miro-toolbar-divider {
+  width: 24px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.miro-content-board {
+  width: 290px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Scrollbar styling for content board */
+.miro-content-board::-webkit-scrollbar {
+  width: 6px;
+}
+.miro-content-board::-webkit-scrollbar-track {
+  background: transparent;
+}
+.miro-content-board::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+/* MOBILE RESPONSIVE OVERRIDES */
+@media (max-width: 768px) {
+  .miro-left-container {
+    top: auto;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: column-reverse;
+    align-items: center;
+    width: 100%;
+  }
+
+  .miro-toolbar {
+    width: auto;
+    max-width: 95vw;
+    height: 56px;
+    flex-direction: row;
+    padding: 0 12px;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  
+  /* Hide scrollbar on mobile toolbar for clean look */
+  .miro-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .miro-toolbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .miro-toolbar-divider {
+    width: 1px;
+    height: 24px;
+  }
+
+  .miro-content-board {
+    width: 95vw;
+    max-height: 60vh;
+    padding: 16px;
+    animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+/* ─── Right Panel (Electrostatics Inventory) ───────────────── */
+.miro-right-panel {
+  position: fixed;
+  right: 16px;
+  top: 76px;
+  width: 280px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  max-height: calc(100vh - 100px);
+  z-index: 100;
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+.miro-right-panel .panel-content {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.miro-right-panel .panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+.miro-right-panel .panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.miro-right-panel .panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.charge-row-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+.charge-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+}
+
+@media (max-width: 768px) {
+  .miro-right-panel {
+    display: none !important;
+  }
 }
 
 .miro-content-board .panel-header h2 {
@@ -1115,5 +1279,148 @@ input[type="range"]::-moz-range-thumb {
 }
 .coord-input.active {
   box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  z-index: 1;
+  max-width: 800px;
+  width: 100%;
+  padding: 0 20px;
+}
+
+.dashboard-header-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 1;
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.dashboard-title {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin: 0;
+  background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dashboard-subtitle {
+  font-size: 16px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.dashboard-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.dashboard-card {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(12px);
+  position: relative;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 0 12px;
+  }
+  
+  .dashboard-card {
+    padding: 16px 12px;
+  }
+  
+  .dashboard-header-container {
+    margin-bottom: 32px;
+  }
+
+  .dashboard-title {
+    font-size: 26px;
+    letter-spacing: -0.5px;
+  }
+
+  .dashboard-subtitle {
+    font-size: 14px;
+    padding: 0 20px;
+  }
+
+  .dashboard-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* TOP BAR MOBILE RESPONSIVE OVERRIDES */
+@media (max-width: 768px) {
+  #top-bar {
+    justify-content: center;
+    padding: 16px 12px;
+  }
+  
+  .top-bar-left {
+    width: 100%;
+    justify-content: center;
+    position: relative;
+    padding: 8px 36px 8px 12px; /* Extra padding on right for the button */
+  }
+  
+  .top-bar-left h1 {
+    font-size: 0.85rem;
+  }
+
+  .mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 8px;
+  }
+  
+  .top-bar-center {
+    display: none;
+    position: absolute;
+    top: 64px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    flex-direction: column;
+    transform: none;
+    background: rgba(15, 23, 42, 0.95);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    z-index: 1000;
+  }
+  
+  .top-bar-center.mobile-open {
+    display: flex;
+    animation: slideDownToast 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  .nav-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 16px;
+  }
 }
 

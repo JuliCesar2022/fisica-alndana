@@ -32,7 +32,9 @@ import {
   MousePointer,
   Link,
   Scissors,
-  Sparkles
+  Sparkles,
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 import katex from 'katex';
@@ -48,7 +50,9 @@ import {
   setCustomFriction, 
   setCustomMaterialName, 
   setRampLength, 
-  updateSensorDistance 
+  updateSensorDistance,
+  addSensor,
+  removeSensor
 } from '../../store/rampSlice';
 import { MATERIALS } from '../../utils/constants';
 
@@ -73,7 +77,9 @@ import {
   setPlaying as setElectroPlaying, 
   updateChargeValue, 
   setVacuumMode,
-  moveCharge
+  moveCharge,
+  syncChargesFromEngine,
+  deleteCharge
 } from '../../store/electroSlice';
 
 
@@ -242,7 +248,7 @@ export default function MiroLeftPanel() {
   // Helpers
   const math = (expr: string, block = false) => {
     try {
-      const html = katex.renderToString(expr, { displayMode: block, throwOnError: false });
+      const html = katex.renderToString(expr, { displayMode: block, throwOnError: false, output: 'html' });
       return <span dangerouslySetInnerHTML={{ __html: html }} />;
     } catch (e) {
       return <span>{expr}</span>;
@@ -381,24 +387,41 @@ export default function MiroLeftPanel() {
           <div className="control-label">
             <span><Target size={14} /> Posición Sensores (m)</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' }}>
-            {[1, 2, 3, 4].map((sensorNum, idx) => (
-              <div key={`sensor-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '10px', color: '#94a3b8' }}>Sensor S{sensorNum}</span>
-                <input 
-                  type="number" 
-                  min="0" 
-                  max={ramp.rampLength} 
-                  step="0.01" 
-                  value={ramp.sensorDistances ? ramp.sensorDistances[idx] : 0} 
-                  onChange={(e) => {
-                    dispatch(updateSensorDistance({ index: idx, distance: Number(e.target.value) }));
-                    window.dispatchEvent(new Event(EVENT_RESET_RAMP));
-                  }}
-                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px', borderRadius: '4px', fontSize: '11px', width: '100%' }}
-                />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginTop: '6px' }}>
+            {ramp.sensorDistances.map((dist, idx) => (
+              <div key={`sensor-${idx}`} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '10px', color: '#94a3b8' }}>Sensor S{idx + 1}</span>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max={ramp.rampLength} 
+                    step="0.01" 
+                    value={dist} 
+                    onChange={(e) => {
+                      dispatch(updateSensorDistance({ index: idx, distance: Number(e.target.value) }));
+                      window.dispatchEvent(new Event(EVENT_RESET_RAMP));
+                    }}
+                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px', borderRadius: '4px', fontSize: '11px', width: '100%' }}
+                  />
+                </div>
+                {ramp.sensorDistances.length > 1 && (
+                  <button
+                    onClick={() => dispatch(removeSensor(idx))}
+                    style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', height: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Eliminar sensor"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             ))}
+            <button
+              onClick={() => dispatch(addSensor())}
+              style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px dashed rgba(59, 130, 246, 0.4)', color: '#60a5fa', borderRadius: '4px', padding: '6px', fontSize: '11px', cursor: 'pointer', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+            >
+              <Plus size={12} /> Añadir Sensor
+            </button>
           </div>
         </div>
       </div>
@@ -609,6 +632,20 @@ export default function MiroLeftPanel() {
               - Negativa (-5 µC)
             </button>
           </div>
+          <button 
+            className="material-btn" 
+            style={{ width: '100%', marginTop: '8px', borderColor: '#a5b4fc', color: '#a5b4fc', padding: '6px', fontSize: '11px' }} 
+            onClick={() => {
+              dispatch(syncChargesFromEngine([
+                { id: `eq_${Date.now()}_1`, charge: 9, isStatic: true, x: -150, y: 24, z: 0 },
+                { id: `eq_${Date.now()}_2`, charge: 4, isStatic: true, x: 100, y: 24, z: 0 },
+                { id: `eq_${Date.now()}_3`, charge: -2, isStatic: false, x: 0, y: 24, z: 0 }
+              ]));
+            }}
+          >
+            <Target size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+            Cargar Set: Punto de Equilibrio
+          </button>
         </div>
 
         <div className="control-group" style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
@@ -622,62 +659,6 @@ export default function MiroLeftPanel() {
 
 
 
-        {selectedCharge && (
-          <div className="control-group" style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.15)' }}>
-            <div className="control-label">
-              <span style={{ color: '#a5b4fc', fontWeight: 600 }}><Sliders size={14} /> Editar Seleccionada</span>
-              <span className="control-value">{selectedCharge.charge > 0 ? '+' : ''}{selectedCharge.charge} µC</span>
-            </div>
-            <input 
-              type="range" 
-              min="-20" max="20" step="1" 
-              value={selectedCharge.charge} 
-              onChange={(e) => dispatch(updateChargeValue({ id: selectedCharge.id, charge: Number(e.target.value) }))} 
-              style={{ margin: '8px 0' }}
-            />
-            
-            <div style={{ display: 'flex', gap: '10px', marginTop: '8px', alignItems: 'center' }}>
-              <span className="control-label" style={{ flex: 1, fontSize: '11px' }}>Fijar en el plano</span>
-              <button 
-                className={`material-btn ${selectedCharge.isStatic ? 'active' : ''}`} 
-                style={{ flex: 1, padding: '4px', fontSize: '11px' }}
-                onClick={() => window.dispatchEvent(new CustomEvent('evt_toggle_static', { detail: selectedCharge.id }))}
-              >
-                {selectedCharge.isStatic ? 'Fija (Anclada)' : 'Libre'}
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-              <div style={{ flex: 1 }}>
-                <div className="control-label"><span style={{ fontSize: '9px', color: '#94a3b8' }}>Posición X</span></div>
-                <input 
-                  type="number" 
-                  value={Math.round(selectedCharge.x)} 
-                  onChange={(e) => dispatch(moveCharge({ id: selectedCharge.id, x: Number(e.target.value), y: selectedCharge.y, z: selectedCharge.z }))}
-                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className="control-label"><span style={{ fontSize: '9px', color: '#94a3b8' }}>Altura (Y)</span></div>
-                <input 
-                  type="number" 
-                  value={Math.round(selectedCharge.y)} 
-                  onChange={(e) => dispatch(moveCharge({ id: selectedCharge.id, x: selectedCharge.x, y: Number(e.target.value), z: selectedCharge.z }))}
-                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className="control-label"><span style={{ fontSize: '9px', color: '#94a3b8' }}>Profun. (Z)</span></div>
-                <input 
-                  type="number" 
-                  value={Math.round(selectedCharge.z)} 
-                  onChange={(e) => dispatch(moveCharge({ id: selectedCharge.id, x: selectedCharge.x, y: selectedCharge.y, z: Number(e.target.value) }))}
-                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '4px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
@@ -1037,12 +1018,39 @@ export default function MiroLeftPanel() {
   // TELEMETRY/CHARTS RENDER (Shared for /ramp & /freefall)
   // ----------------------------------------------------
   const renderTelemetryCharts = () => {
+    const renderSensorTimes = () => {
+      if (path !== '/ramp') return null;
+      return (
+        <div style={{ marginBottom: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '12px' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Target size={14} color="#3b82f6" /> Tiempos de Sensores
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {ramp.sensorDistances.map((dist, idx) => {
+              const t = ramp.state.sensorTimes?.[idx];
+              return (
+                <div key={idx} style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '10px', color: '#94a3b8' }}>S{idx + 1} ({dist}m)</span>
+                  <span style={{ fontSize: '11px', fontFamily: 'monospace', color: t !== null && t !== undefined ? '#10b981' : '#64748b', fontWeight: 'bold' }}>
+                    {t !== null && t !== undefined ? `${t.toFixed(3)} s` : '---'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
     if (history.length < 2) {
       return (
+        <>
+          {renderSensorTimes()}
         <div style={{ height: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '11.5px', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '12px', background: 'rgba(0,0,0,0.2)', padding: '20px', textAlign: 'center' }}>
           <Clock size={28} style={{ marginBottom: '10px', opacity: 0.5, color: '#3b82f6' }} />
           <span>Inicia la simulación para trazar gráficas de magnitudes físicas en tiempo real</span>
         </div>
+        </>
       );
     }
 
@@ -1135,7 +1143,9 @@ export default function MiroLeftPanel() {
     const lastPoint = history[history.length - 1];
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <>
+        {renderSensorTimes()}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '2px' }}>
           <button 
             style={{ flex: 1, padding: '8px', background: circuitTelemetryTab === 'kinetics' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderBottom: circuitTelemetryTab === 'kinetics' ? '2px solid #3b82f6' : '2px solid transparent', color: circuitTelemetryTab === 'kinetics' ? '#60a5fa' : '#94a3b8', cursor: 'pointer', fontSize: '10.5px', fontWeight: 600 }}
@@ -1202,6 +1212,7 @@ export default function MiroLeftPanel() {
           </div>
         </div>
       </div>
+      </>
     );
   };
 
@@ -1252,10 +1263,10 @@ export default function MiroLeftPanel() {
 
   // Main Miro Layout
   return (
-    <div className="miro-left-container" style={{ position: 'absolute', left: '24px', top: '50%', transform: 'translateY(-50%)', zIndex: 100, display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
+    <div className="miro-left-container">
       
       {/* 1. Far-left Vertical Miro Toolbar */}
-      <div className="miro-toolbar" style={{ width: '52px', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '12px', pointerEvents: 'auto', height: 'fit-content' }}>
+      <div className="miro-toolbar">
         
         {/* Navigation Home */}
         <button 
@@ -1269,7 +1280,7 @@ export default function MiroLeftPanel() {
           <Home size={18} style={{ margin: 'auto' }} />
         </button>
 
-        <div className="miro-toolbar-divider" style={{ width: '24px', height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+        <div className="miro-toolbar-divider" />
 
         {/* Tab 0: Cursor / Selection (Miro default) */}
         <button 
@@ -1287,7 +1298,7 @@ export default function MiroLeftPanel() {
           <MousePointer size={18} style={{ margin: 'auto', transform: 'rotate(-25deg)' }} />
         </button>
 
-        <div className="miro-toolbar-divider" style={{ width: '24px', height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+        <div className="miro-toolbar-divider" />
 
         {/* Tab 1: Config */}
         <button 
@@ -1405,7 +1416,7 @@ export default function MiroLeftPanel() {
         {/* CAD Tools (Only active inside /circuit custom Creador CAD) */}
         {path === '/circuit' && circuit.topology === 'custom' && (
           <>
-            <div className="miro-toolbar-divider" style={{ width: '24px', height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+            <div className="miro-toolbar-divider" />
             
             {/* Mover/Pan */}
             <button
@@ -1477,7 +1488,7 @@ export default function MiroLeftPanel() {
           </>
         )}
 
-        <div className="miro-toolbar-divider" style={{ width: '24px', height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+        <div className="miro-toolbar-divider" />
 
 
         {/* Play / Pause simulation */}
@@ -1513,7 +1524,7 @@ export default function MiroLeftPanel() {
 
       {/* 2. Collapsible Slide-out Content Board (Miro style) */}
       {activeTab && (
-        <div className="miro-content-board glass-panel" style={{ width: '320px', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', height: '100%', maxHeight: 'calc(100vh - 120px)', animation: 'slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+        <div className="miro-content-board glass-panel">
 
         
         {/* Panel Header */}

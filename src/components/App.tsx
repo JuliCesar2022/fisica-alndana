@@ -7,12 +7,14 @@ import PhaserGame from './PhaserGame';
 import Canvas3D from './Canvas3D';
 import DashboardMenu from './DashboardMenu';
 import MiroLeftPanel, { EVENT_ADD_CHARGE, EVENT_RESET_ELECTRO } from './panels/MiroLeftPanel';
+import ElectroRightPanel from './panels/ElectroRightPanel';
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [toastMsg, setToastMsg] = React.useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const handleNav = (path: string, key: string) => {
     if (['/collision', '/pendulum'].includes(path)) {
@@ -20,6 +22,7 @@ const Header = () => {
       setTimeout(() => setToastMsg(''), 3000);
       return;
     }
+    setMobileMenuOpen(false);
     navigate(path);
   };
 
@@ -28,12 +31,15 @@ const Header = () => {
       <div className="top-bar-left">
         <div className="logo"><Atom size={24} color="#3b82f6" /></div>
         <h1>Laboratorio de Física - Miguel Aldana</h1>
+        <button 
+          className="mobile-menu-toggle" 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          <Menu size={20} />
+        </button>
       </div>
 
-      <nav className="top-bar-center">
-        <button className={`nav-btn ${location.pathname === '/' ? 'active' : ''}`} onClick={() => handleNav('/', 'menu')}>
-          <Menu className="nav-icon" size={16} /> Menú
-        </button>
+      <nav className={`top-bar-center ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <button className={`nav-btn ${location.pathname === '/ramp' ? 'active' : ''}`} onClick={() => handleNav('/ramp', 'ramp')}>
           <Triangle className="nav-icon" size={16} /> Rampa
         </button>
@@ -278,7 +284,7 @@ export default function App() {
             <Routes>
               <Route path="/ramp" element={<MiroLeftPanel />} />
               <Route path="/freefall" element={<MiroLeftPanel />} />
-              <Route path="/electrostatics" element={<MiroLeftPanel />} />
+              <Route path="/electrostatics" element={<><MiroLeftPanel /><ElectroRightPanel /></>} />
               <Route path="/circuit" element={<MiroLeftPanel />} />
             </Routes>
           </div>

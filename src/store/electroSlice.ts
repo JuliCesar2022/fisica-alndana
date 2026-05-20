@@ -19,8 +19,8 @@ interface ElectroState {
 
 const initialState: ElectroState = {
   charges: [
-    { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0, z: 0 },
-    { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0, z: 0 },
+    { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 24, z: 0 },
+    { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 24, z: 0 },
   ],
   selectedChargeId: null,
   isPlaying: false,
@@ -88,8 +88,8 @@ export const electroSlice = createSlice({
 
     resetCharges: (state) => {
       state.charges = [
-        { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 0, z: 0 },
-        { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 0, z: 0 },
+        { id: 'charge_1', charge: 5, isStatic: true, x: -120, y: 24, z: 0 },
+        { id: 'charge_2', charge: -5, isStatic: false, x: 120, y: 24, z: 0 },
       ];
       state.selectedChargeId = null;
       state.isPlaying = false;

@@ -31,10 +31,7 @@ interface RampState {
     totalEnergy: number;
     onRamp: boolean;
     onGround: boolean;
-    s1Time: number | null;
-    s2Time: number | null;
-    s3Time: number | null;
-    s4Time: number | null;
+    sensorTimes: (number | null)[];
   };
 }
 
@@ -47,7 +44,7 @@ const initialState: RampState = {
   customFriction: 0.25,
   customMaterialName: 'Mi Material',
   rampLength: PHYSICS_DEFAULTS.rampLength,
-  sensorDistances: [0.2, 0.8, 1.4, 1.9],
+  sensorDistances: PHYSICS_DEFAULTS.sensorDistances,
   
   forces: {
     weight: 0, normalForce: 0, parallelForce: 0, frictionForce: 0, netForce: 0, acceleration: 0
@@ -55,7 +52,7 @@ const initialState: RampState = {
   state: {
     time: 0, velocity: 0, position: 0, height: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0,
     onRamp: true, onGround: false,
-    s1Time: null, s2Time: null, s3Time: null, s4Time: null
+    sensorTimes: Array(PHYSICS_DEFAULTS.sensorDistances.length).fill(null)
   }
 };
 
@@ -87,6 +84,25 @@ export const rampSlice = createSlice({
       if (d > state.rampLength) d = state.rampLength;
       state.sensorDistances[action.payload.index] = d;
     },
+    addSensor: (state) => {
+      // Add a new sensor near the end of the ramp
+      let d = state.rampLength * 0.9;
+      // Make sure it doesn't strictly overlap the last one perfectly
+      if (state.sensorDistances.length > 0) {
+        const last = state.sensorDistances[state.sensorDistances.length - 1];
+        if (Math.abs(d - last) < 0.05) {
+          d = Math.max(0, last - 0.1);
+        }
+      }
+      state.sensorDistances.push(Number(d.toFixed(4)));
+      state.state.sensorTimes.push(null);
+    },
+    removeSensor: (state, action: PayloadAction<number>) => {
+      if (state.sensorDistances.length > 1) {
+        state.sensorDistances.splice(action.payload, 1);
+        state.state.sensorTimes.splice(action.payload, 1);
+      }
+    },
     
     updatePhysicsData: (state, action: PayloadAction<{forces: RampState['forces'], state: RampState['state']}>) => {
       state.forces = action.payload.forces;
@@ -95,5 +111,5 @@ export const rampSlice = createSlice({
   }
 });
 
-export const { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, setRampLength, updateSensorDistance, updatePhysicsData } = rampSlice.actions;
+export const { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, setRampLength, updateSensorDistance, addSensor, removeSensor, updatePhysicsData } = rampSlice.actions;
 export default rampSlice.reducer;

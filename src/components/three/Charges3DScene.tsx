@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Stars, Text, OrbitControls } from '@react-three/drei';
+import { Stars, Text, OrbitControls, TransformControls } from '@react-three/drei';
 import { useSelector, useDispatch } from 'react-redux';
 import * as THREE from 'three';
 import { RootState } from '../../store/store';
@@ -57,6 +57,9 @@ function FieldArrows({ charges }: { charges: PointChargeState[] }) {
   return <>{arrows}</>;
 }
 
+// Global variable to prevent deselection when clicking the TransformControls gizmo
+let cancelDeselect = false;
+
 // ─── Single Charge Sphere ─────────────────────────────────────────
 function ChargeSphere({
   charge,
@@ -69,12 +72,7 @@ function ChargeSphere({
   onSelect: (id: string) => void;
   onDragEnd: (id: string, newX: number, newY: number, newZ: number) => void;
 }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const { raycaster } = useThree();
-  const [isDragging, setIsDragging] = useState(false);
-
-  // The drag plane operates at the charge's current height (Y axis) so we only drag in X and Z
-  const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), -(charge.y / 80)));
+  const meshRef = useRef<THREE.Group>(null);
 
   const isPos = charge.charge > 0;
   const color = isPos ? '#ef4444' : '#3b82f6';
@@ -86,55 +84,48 @@ function ChargeSphere({
   const handlePointerDown = (e: any) => {
     e.stopPropagation();
     onSelect(charge.id);
-    if (!charge.isStatic) setIsDragging(true);
   };
 
-  const handlePointerMove = (e: any) => {
-    if (!isDragging) return;
-    const intersect = new THREE.Vector3();
-    raycaster.ray.intersectPlane(dragPlane.current, intersect);
-    if (meshRef.current) meshRef.current.position.set(intersect.x, charge.y / 80, intersect.z);
-  };
-
-  const handlePointerUp = (e: any) => {
-    if (!isDragging) return;
-    setIsDragging(false);
+  const handleDrag = (e: any) => {
     if (meshRef.current) {
-      onDragEnd(charge.id, meshRef.current.position.x * 80, charge.y, meshRef.current.position.z * 80);
+      onDragEnd(charge.id, meshRef.current.position.x * 80, meshRef.current.position.y * 80, meshRef.current.position.z * 80);
     }
   };
 
   return (
-    <group>
-      {/* Glow sphere */}
-      <mesh position={pos} scale={[1.4, 1.4, 1.4]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshStandardMaterial color={glow} transparent opacity={0.12} />
-      </mesh>
-      {/* Core */}
-      <mesh
-        ref={meshRef}
-        position={pos}
-        castShadow
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-      >
-        <sphereGeometry args={[0.3, 32, 32]} />
-        <meshStandardMaterial
-          color={color}
-          roughness={0.1}
-          metalness={0.4}
-          emissive={color}
-          emissiveIntensity={isSelected ? 0.6 : 0.2}
+    <>
+      {isSelected && (
+        <TransformControls 
+          object={meshRef} 
+          mode="translate" 
+          onMouseDown={() => { cancelDeselect = true; }}
+          onObjectChange={handleDrag}
+          onMouseUp={handleDrag}
         />
-      </mesh>
-      {/* Label */}
-      <Text position={[pos.x, pos.y + 0.5, pos.z]} fontSize={0.25} color="#f8fafc" anchorX="center">
-        {`${charge.charge > 0 ? '+' : ''}${charge.charge} μC`}
-      </Text>
-    </group>
+      )}
+      <group ref={meshRef} position={pos} onPointerDown={handlePointerDown}>
+        {/* Glow sphere */}
+        <mesh scale={[1.4, 1.4, 1.4]}>
+          <sphereGeometry args={[0.3, 16, 16]} />
+          <meshStandardMaterial color={glow} transparent opacity={0.12} />
+        </mesh>
+        {/* Core */}
+        <mesh castShadow>
+          <sphereGeometry args={[0.3, 32, 32]} />
+          <meshStandardMaterial
+            color={color}
+            roughness={0.1}
+            metalness={0.4}
+            emissive={color}
+            emissiveIntensity={isSelected ? 0.6 : 0.2}
+          />
+        </mesh>
+        {/* Label */}
+        <Text position={[0, 0.5, 0]} fontSize={0.25} color="#f8fafc" anchorX="center">
+          {`${charge.charge > 0 ? '+' : ''}${charge.charge} μC`}
+        </Text>
+      </group>
+    </>
   );
 }
 
@@ -146,19 +137,42 @@ function ForceLines({ charges }: { charges: PointChargeState[] }) {
       const a = charges[i], b = charges[j];
       const attract = a.charge * b.charge < 0;
       const color = attract ? '#22c55e' : '#ef4444';
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dz = b.z - a.z;
+      const distPx = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const distM = distPx / 100; // 100 pixels = 1 meter
+
+      const midX = (a.x + b.x) / 2 / 80;
+      const midY = (a.y + b.y) / 2 / 80;
+      const midZ = (a.z + b.z) / 2 / 80;
+
       lines.push(
-        <line key={`${a.id}-${b.id}`}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              args={[new Float32Array([
-                a.x / 80, a.y / 80, a.z / 80,
-                b.x / 80, b.y / 80, b.z / 80,
-              ]), 3]}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial color={color} transparent opacity={0.4} />
-        </line>
+        <group key={`${a.id}-${b.id}`}>
+          <line>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                args={[new Float32Array([
+                  a.x / 80, a.y / 80, a.z / 80,
+                  b.x / 80, b.y / 80, b.z / 80,
+                ]), 3]}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color={color} transparent opacity={0.4} />
+          </line>
+          <Text 
+            position={[midX, midY + 0.15, midZ]} 
+            fontSize={0.16} 
+            color="#94a3b8" 
+            anchorX="center" 
+            anchorY="bottom"
+            outlineWidth={0.02}
+            outlineColor="#0f172a"
+          >
+            {`${distM.toFixed(2)} m`}
+          </Text>
+        </group>
       );
     }
   }
@@ -190,9 +204,21 @@ function ElectroPhysicsLoop({
       if (posRef.current.length !== charges.length) {
         posRef.current = charges.map(c => ({ ...c }));
         velRef.current = charges.map(() => ({ vx: 0, vy: 0, vz: 0 }));
+      } else if (selectedChargeId) {
+        // Sync position of the selected charge being dragged
+        const sc = charges.find(c => c.id === selectedChargeId);
+        if (sc) {
+          const index = posRef.current.findIndex(c => c.id === selectedChargeId);
+          if (index !== -1) {
+            posRef.current[index].x = sc.x;
+            posRef.current[index].y = sc.y;
+            posRef.current[index].z = sc.z;
+            velRef.current[index] = { vx: 0, vy: 0, vz: 0 }; // kill momentum while dragging
+          }
+        }
       }
     }
-  }, [charges, isPlaying]);
+  }, [charges, isPlaying, selectedChargeId]);
 
   useFrame((_, delta) => {
     // 1. If playing, step the physics simulation
@@ -430,7 +456,7 @@ export default function Charges3DScene() {
     dispatch(syncChargesFromEngine(newCharges));
   }, [dispatch]);
 
-  const handleSelect = useCallback((id: string) => {
+  const handleSelect = useCallback((id: string | null) => {
     dispatch(setSelectedCharge(id));
   }, [dispatch]);
 
@@ -440,7 +466,19 @@ export default function Charges3DScene() {
   }, [dispatch, electro.charges]);
 
   return (
-    <>
+    <group>
+      {/* Invisible click-catcher for the background */}
+      <mesh scale={500} onPointerDown={(e) => {
+        e.stopPropagation();
+        cancelDeselect = false;
+        setTimeout(() => {
+          if (!cancelDeselect) handleSelect(null);
+        }, 50);
+      }}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial side={THREE.BackSide} transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       <color attach="background" args={['#030712']} />
       <fog attach="fog" args={['#030712', 20, 60]} />
       <ambientLight intensity={0.2} />
@@ -459,13 +497,6 @@ export default function Charges3DScene() {
       {/* Force lines */}
       <ForceLines charges={electro.charges} />
 
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-         <planeGeometry args={[40, 40]} />
-         <meshStandardMaterial color="#050a14" roughness={1} />
-      </mesh>
-      <gridHelper args={[40, 40, '#1e293b', '#0f172a']} position={[0, 0.001, 0]} />
-
       {/* Charges */}
       {electro.charges.map(ch => (
         <ChargeSphere
@@ -478,6 +509,6 @@ export default function Charges3DScene() {
       ))}
 
       <CinematicIntroController />
-    </>
+    </group>
   );
 }

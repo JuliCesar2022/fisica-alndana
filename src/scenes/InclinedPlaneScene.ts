@@ -252,12 +252,7 @@ export class InclinedPlaneScene extends Phaser.Scene {
     const angleRad = (this.currentAngle * Math.PI) / 180;
     const sensorDistances = this.currentSensorDistances;
     const state = store.getState().ramp.state;
-    const sensorTriggered = [
-      state.s1Time !== null,
-      state.s2Time !== null,
-      state.s3Time !== null,
-      state.s4Time !== null
-    ];
+    const sensorTriggered = sensorDistances.map((_, idx) => state.sensorTimes?.[idx] !== null && state.sensorTimes?.[idx] !== undefined);
 
     sensorDistances.forEach((dist, idx) => {
       const pt = this.getPointOnRampSurface(dist);

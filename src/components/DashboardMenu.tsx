@@ -250,11 +250,13 @@ export default function DashboardMenu() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       background: '#0a0e17',
       fontFamily: "'Inter', sans-serif",
       position: 'relative',
-      overflow: 'hidden',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      padding: '100px 0',
       color: '#f1f5f9'
     }}>
       {/* Visual background grid pattern */}
@@ -354,57 +356,26 @@ export default function DashboardMenu() {
       `}</style>
 
       {/* Header Container */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '12px',
-        zIndex: 1,
-        marginBottom: '48px',
-        textAlign: 'center'
-      }}>
+      <div className="dashboard-header-container">
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <Atom size={44} style={{ color: '#6366f1' }} className="animate-spin" />
-          <h1 style={{
-            fontSize: '42px',
-            fontWeight: 800,
-            letterSpacing: '-1px',
-            margin: 0,
-            background: 'linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>
+          <Atom size={44} style={{ color: '#6366f1' }} className="animate-spin dashboard-icon" />
+          <h1 className="dashboard-title">
             Laboratorio de Física - Miguel Aldana
           </h1>
         </div>
-        <p style={{ fontSize: '16px', color: '#64748b', margin: 0, fontWeight: 500 }}>
+        <p className="dashboard-subtitle">
           Aprendizaje Basado en Proyectos • Entorno Científico 3D
         </p>
       </div>
 
       {/* Cards Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 240px)',
-        gap: '24px',
-        zIndex: 1,
-        maxWidth: '800px'
-      }}>
+      <div className="dashboard-grid">
         {cards.map((card) => {
           const hexOpacity = card.available ? '1f' : '0d';
           const cardStyle: React.CSSProperties = {
             background: `${card.color}${hexOpacity}`,
-            border: `1px solid ${card.available ? card.color + '4d' : 'rgba(255, 255, 255, 0.05)'}`,
-            borderRadius: '16px',
-            padding: '24px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
+            borderColor: card.available ? card.color + '4d' : 'rgba(255, 255, 255, 0.05)',
             cursor: card.available ? 'pointer' : 'default',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            backdropFilter: 'blur(12px)',
-            position: 'relative',
             opacity: card.available ? 1 : 0.4
           };
 
@@ -413,7 +384,7 @@ export default function DashboardMenu() {
               key={card.key}
               style={cardStyle}
               onClick={() => card.available && navigate(card.path)}
-              className={card.available ? 'group hover:-translate-y-1 hover:shadow-2xl' : ''}
+              className={`dashboard-card ${card.available ? 'group hover:-translate-y-1 hover:shadow-2xl' : ''}`}
               onMouseEnter={(e) => {
                 if (card.available) {
                   e.currentTarget.style.borderColor = card.color;

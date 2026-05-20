@@ -546,12 +546,7 @@ export default function Ramp3DScene() {
       {/* Photoelectric photocell sensor gates along the ramp */}
       {ramp.sensorDistances.map((dist, idx) => {
         const label = `S${idx + 1}`;
-        const isTriggered = [
-          ramp.state.s1Time !== null,
-          ramp.state.s2Time !== null,
-          ramp.state.s3Time !== null,
-          ramp.state.s4Time !== null
-        ][idx];
+        const isTriggered = ramp.state.sensorTimes?.[idx] !== null && ramp.state.sensorTimes?.[idx] !== undefined;
 
         return (
           <SensorGate
