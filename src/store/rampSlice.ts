@@ -82,7 +82,10 @@ export const rampSlice = createSlice({
       }
     },
     updateSensorDistance: (state, action: PayloadAction<{index: number, distance: number}>) => {
-      state.sensorDistances[action.payload.index] = action.payload.distance;
+      let d = action.payload.distance;
+      if (d < 0) d = 0;
+      if (d > state.rampLength) d = state.rampLength;
+      state.sensorDistances[action.payload.index] = d;
     },
     
     updatePhysicsData: (state, action: PayloadAction<{forces: RampState['forces'], state: RampState['state']}>) => {
