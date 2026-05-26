@@ -172,9 +172,9 @@ html, body {
    Top Bar
    ============================================ */
 #top-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 16px 24px;
   background: transparent;
   backdrop-filter: none;
@@ -200,6 +200,7 @@ html, body {
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.1);
   pointer-events: auto;
+  justify-self: start;
 }
 
 .top-bar-left .logo {
@@ -254,13 +255,13 @@ html, body {
 .nav-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 5px;
+  padding: 6px 11px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-main);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 500;
   border-radius: 9px;
   cursor: pointer;
@@ -803,11 +804,11 @@ input[type="range"]::-moz-range-thumb {
 
 @keyframes slideInTopNav {
   from {
-    transform: translate(-50%, -40px) scale(0.95);
+    transform: translateY(-40px) scale(0.95);
     opacity: 0;
   }
   to {
-    transform: translate(-50%, 0) scale(1);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
@@ -1283,12 +1284,12 @@ input[type="range"]::-moz-range-thumb {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   z-index: 1;
-  max-width: 800px;
+  max-width: 1020px;
   width: 100%;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 .dashboard-header-container {
@@ -1334,16 +1335,14 @@ input[type="range"]::-moz-range-thumb {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(12px);
   position: relative;
-  max-width: 320px;
   width: 100%;
-  margin: 0 auto;
 }
 
 @media (max-width: 768px) {
   .dashboard-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-    padding: 0 12px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    padding: 0 14px;
   }
   
   .dashboard-card {

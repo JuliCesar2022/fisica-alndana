@@ -1,13 +1,54 @@
 import React, { useRef, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import InfiniteGround from './InfiniteGround';
 import { Stars, Text, Line, OrbitControls, Billboard } from '@react-three/drei';
 import { useSelector, useDispatch } from 'react-redux';
 import * as THREE from 'three';
 import { RootState } from '../../store/store';
-import { updatePhysicsData, setPlaying } from '../../store/rampSlice';
+import { updatePhysicsData, setPlaying, RampScene } from '../../store/rampSlice';
 import { ForceCalculator } from '../../physics/ForceCalculator';
 import { MATERIALS } from '../../utils/constants';
 import { EVENT_RESET_RAMP } from '../panels/MiroLeftPanel';
+
+// ─── Scene Configurations ──────────────────────────────────────────
+interface RampSceneCfg {
+  bg: string;
+  fogColor: string;
+  fogNear: number;
+  fogFar: number;
+  ambientIntensity: number;
+  ambientColor: string;
+  dirIntensity: number;
+  dirColor: string;
+  groundBase: string;
+  groundCell: string;
+  groundSection: string;
+  starsCount: number;
+}
+
+const RAMP_SCENES: Record<RampScene, RampSceneCfg> = {
+  lab: {
+    bg: '#0a0e17', fogColor: '#0a0e17', fogNear: 20, fogFar: 60,
+    ambientIntensity: 0.4, ambientColor: '#ffffff',
+    dirIntensity: 1.2, dirColor: '#fffbe6',
+    groundBase: '#0a0e17', groundCell: '#1e293b', groundSection: '#2d3f52',
+    starsCount: 2000,
+  },
+  mountain: {
+    bg: '#7ec8e3', fogColor: '#b8dde8', fogNear: 25, fogFar: 80,
+    ambientIntensity: 0.9, ambientColor: '#fffbe6',
+    dirIntensity: 2.2, dirColor: '#fff5d0',
+    groundBase: '#2d5a1b', groundCell: '#3a7024', groundSection: '#4a8c2e',
+    starsCount: 0,
+  },
+  moon: {
+    bg: '#04050a', fogColor: '#07090f', fogNear: 22, fogFar: 65,
+    ambientIntensity: 0.18, ambientColor: '#b0c4de',
+    dirIntensity: 0.85, dirColor: '#dde8ff',
+    groundBase: '#111318', groundCell: '#1c1f28', groundSection: '#252932',
+    starsCount: 4500,
+  },
+};
 
 // ─── Material Colors ───────────────────────────────────────────────
 const MAT_COLORS: Record<string, string> = {
@@ -184,35 +225,27 @@ function RampMesh({ angleRad, length, material }: { angleRad: number; length: nu
   );
 }
 
-// ─── Flat Platform ──────────────────────────────────────────────────
-function PlatformMesh({ rampW, length, material }: { rampW: number; length: number; material: string }) {
+// ─── Flat Platform (right-only, anchored at ramp base) ──────────────
+// Extends 800 units to the right; left edge sits exactly at the ramp foot.
+function PlatformMesh({ rampBaseX, material }: { rampBaseX: number; material: string }) {
+  const WIDTH = 800;
+  const centerX = rampBaseX + WIDTH / 2;
+
   const texture = React.useMemo(() => {
     const tex = createProceduralTexture(material);
-    tex.repeat.set(length * 0.5, 1); // wrap nicely along length
+    tex.repeat.set(80, 1);
     return tex;
-  }, [material, length]);
-  
+  }, [material]);
+
   return (
-    <group position={[rampW / 2 + length / 2, -0.05, 0]}>
-      <mesh castShadow receiveShadow>
-        {/* We use an extrude or box to draw the flat platform */}
-        <boxGeometry args={[length, 0.1, 0.6]} />
-        <meshStandardMaterial 
-          map={texture} 
-          roughness={material === 'ice' ? 0.05 : material === 'steel' ? 0.15 : 0.8} 
-          metalness={material === 'steel' ? 0.95 : 0.0} 
-        />
-      </mesh>
-      {/* platform border highlight */}
-      <Line
-        points={[
-          [-length / 2, 0.05, 0.3],
-          [length / 2, 0.05, 0.3]
-        ]}
-        color="#ffffff"
-        lineWidth={1.5}
+    <mesh position={[centerX, -0.05, 0]} castShadow receiveShadow>
+      <boxGeometry args={[WIDTH, 0.1, 0.6]} />
+      <meshStandardMaterial
+        map={texture}
+        roughness={material === 'ice' ? 0.05 : material === 'steel' ? 0.15 : 0.8}
+        metalness={material === 'steel' ? 0.95 : 0.0}
       />
-    </group>
+    </mesh>
   );
 }
 
@@ -434,15 +467,13 @@ function CinematicCameraController({
 export default function Ramp3DScene() {
   const dispatch = useDispatch();
   const ramp = useSelector((s: RootState) => s.ramp);
+  const sc = RAMP_SCENES[ramp.scene ?? 'lab'];
 
   const angleRad = (ramp.angle * Math.PI) / 180;
   const rampLen = ramp.rampLength;
   const isPlayingRef = useRef(false);
 
   // Ball radius scales dynamically with the ramp length (from 0.5m to 5.0m)
-  // At rampLen = 0.55m, radius is ~0.05m (looks beautifully proportional!)
-  // At rampLen = 2.0m, radius is ~0.14m
-  // At rampLen = 5.0m, radius is 0.18m
   const ballRadius = Math.max(0.045, Math.min(0.18, rampLen * 0.075));
 
   const forceCalcRef = useRef<ForceCalculator>(
@@ -459,6 +490,7 @@ export default function Ramp3DScene() {
 
   useEffect(() => {
     const onReset = () => {
+      isPlayingRef.current = false;
       forceCalcRef.current = new ForceCalculator(
         ramp.mass, ramp.angle, ramp.gravity, ramp.material, ramp.rampLength, ramp.customFriction, ramp.sensorDistances
       );
@@ -525,20 +557,15 @@ export default function Ramp3DScene() {
     <>
       <PhysicsLoop forceCalcRef={forceCalcRef} isPlayingRef={isPlayingRef} dispatch={dispatch} />
 
-      <color attach="background" args={['#0a0e17']} />
-      <fog attach="fog" args={['#0a0e17', 20, 60]} />
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 10, 5]} intensity={1.2} color="#fffbe6" castShadow shadow-mapSize={[1024, 1024]} />
+      <color attach="background" args={[sc.bg]} />
+      <fog attach="fog" args={[sc.fogColor, sc.fogNear, sc.fogFar]} />
+      <ambientLight intensity={sc.ambientIntensity} color={sc.ambientColor} />
+      <directionalLight position={[5, 10, 5]} intensity={sc.dirIntensity} color={sc.dirColor} castShadow shadow-mapSize={[1024, 1024]} />
       <pointLight position={[ballX, ballY + 0.5, 1]} intensity={0.6} color="#818cf8" distance={4} />
 
-      <Stars radius={50} depth={30} count={2000} factor={2} />
-      
-      {/* Ground and grid shifted down slightly to prevent Z-fighting (parpadeo/flicker) with the ramp & platform */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-        <planeGeometry args={[30, 30]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.9} />
-      </mesh>
-      <gridHelper args={[30, 30, '#1e293b', '#1e293b']} position={[0, -0.018, 0]} />
+      {sc.starsCount > 0 && <Stars radius={50} depth={30} count={sc.starsCount} factor={2} />}
+
+      <InfiniteGround y={-0.02} baseColor={sc.groundBase} cellColor={sc.groundCell} sectionColor={sc.groundSection} />
 
       {/* Ramp Mesh */}
       <RampMesh angleRad={angleRad} length={rampLen} material={ramp.material} />
@@ -566,8 +593,8 @@ export default function Ramp3DScene() {
         );
       })}
 
-      {/* Flat Platform Floor - 15 meters long for the ball to roll on */}
-      <PlatformMesh rampW={rampW} length={15} material={ramp.material} />
+      {/* Flat platform — starts at ramp base, extends right */}
+      <PlatformMesh rampBaseX={rampW / 2} material={ramp.material} />
 
       <SlidingMass
         position={massPosition}
@@ -576,11 +603,15 @@ export default function Ramp3DScene() {
         radius={ballRadius}
       />
 
-      {/* Force Arrows */}
-      <ForceArrow origin={massPosition} direction={gravDir} magnitude={forceW} color="#ef4444" label="W" />
-      <ForceArrow origin={massPosition} direction={normDir} magnitude={forceN} color="#22c55e" label="N" />
-      {forceNet > 0.01 && (
-        <ForceArrow origin={massPosition} direction={netDir} magnitude={forceNet} color="#f59e0b" label="Fnet" />
+      {/* Force Arrows — only after simulation finishes */}
+      {!ramp.isPlaying && ramp.state.time > 0 && (
+        <>
+          <ForceArrow origin={massPosition} direction={gravDir} magnitude={forceW} color="#ef4444" label="W" />
+          <ForceArrow origin={massPosition} direction={normDir} magnitude={forceN} color="#22c55e" label="N" />
+          {forceNet > 0.01 && (
+            <ForceArrow origin={massPosition} direction={netDir} magnitude={forceNet} color="#f59e0b" label="Fnet" />
+          )}
+        </>
       )}
 
       {/* Info label — Billboard so it always faces the camera */}

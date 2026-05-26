@@ -1,0 +1,99 @@
+- generic [ref=e1]:
+  - generic:
+    - generic:
+      - banner:
+        - generic [ref=e6]:
+          - img [ref=e8]
+          - heading "Laboratorio de Física - Miguel Aldana" [level=1] [ref=e12]
+        - navigation [ref=e13]:
+          - button "Rampa" [ref=e14] [cursor=pointer]:
+            - img [ref=e15]
+            - text: Rampa
+          - button "Caída Libre" [active] [ref=e17] [cursor=pointer]:
+            - img [ref=e18]
+            - text: Caída Libre
+          - button "Cargas" [ref=e27] [cursor=pointer]:
+            - img [ref=e28]
+            - text: Cargas
+          - button "Circuitos" [ref=e30] [cursor=pointer]:
+            - img [ref=e31]
+            - text: Circuitos
+          - button "Colisiones" [ref=e33] [cursor=pointer]:
+            - img [ref=e34]
+            - text: Colisiones
+      - generic [ref=e41]:
+        - button "Regresar al Menú" [ref=e42] [cursor=pointer]:
+          - img [ref=e43]
+        - button "Herramienta Seleccionar (V)" [ref=e47] [cursor=pointer]:
+          - img [ref=e48]
+        - button "Ajustes y Controles" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+        - button "Fórmulas y Procedimiento" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+        - button [ref=e58]:
+          - img [ref=e59]
+        - button "Iniciar Simulación" [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+        - button "Reiniciar Simulación" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - heading "Inventario de Cargas" [level=2] [ref=e73]:
+            - img [ref=e74]
+            - text: Inventario de Cargas
+          - generic [ref=e76]: "2"
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e83]: Carga 1
+              - generic [ref=e84]: +5 µC
+            - generic [ref=e85]:
+              - generic [ref=e86]:
+                - generic [ref=e87]: Carga (µC)
+                - generic [ref=e88]: +5 µC
+              - slider [ref=e89] [cursor=pointer]: "5"
+            - generic [ref=e90]:
+              - generic [ref=e91]:
+                - generic [ref=e92]: X
+                - spinbutton [ref=e93]: "-120"
+              - generic [ref=e94]:
+                - generic [ref=e95]: "Y"
+                - spinbutton [ref=e96]: "24"
+              - generic [ref=e97]:
+                - generic [ref=e98]: Z
+                - spinbutton [ref=e99]: "0"
+            - generic [ref=e100]:
+              - button "Seleccionar" [ref=e101] [cursor=pointer]:
+                - img [ref=e102]
+                - text: Seleccionar
+              - button "Desanclar carga" [ref=e104] [cursor=pointer]:
+                - img [ref=e105]
+              - button "Eliminar carga" [ref=e109] [cursor=pointer]:
+                - img [ref=e110]
+          - generic [ref=e113]:
+            - generic [ref=e115] [cursor=pointer]:
+              - generic [ref=e117]: Carga 2
+              - generic [ref=e118]: "-5 µC"
+            - generic [ref=e119]:
+              - generic [ref=e120]:
+                - generic [ref=e121]: Carga (µC)
+                - generic [ref=e122]: "-5 µC"
+              - slider [ref=e123] [cursor=pointer]: "-5"
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - generic [ref=e126]: X
+                - spinbutton [ref=e127]: "120"
+              - generic [ref=e128]:
+                - generic [ref=e129]: "Y"
+                - spinbutton [ref=e130]: "24"
+              - generic [ref=e131]:
+                - generic [ref=e132]: Z
+                - spinbutton [ref=e133]: "0"
+            - generic [ref=e134]:
+              - button "Seleccionar" [ref=e135] [cursor=pointer]:
+                - img [ref=e136]
+                - text: Seleccionar
+              - button "Anclar carga" [ref=e138] [cursor=pointer]:
+                - img [ref=e139]
+              - button "Eliminar carga" [ref=e141] [cursor=pointer]:
+                - img [ref=e142]

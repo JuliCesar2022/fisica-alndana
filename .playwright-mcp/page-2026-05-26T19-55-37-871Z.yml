@@ -1,0 +1,36 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e6]
+      - heading "Laboratorio de Física - Miguel Aldana" [level=1] [ref=e10]
+    - paragraph [ref=e11]: Aprendizaje Basado en Proyectos • Entorno Científico 3D
+  - generic [ref=e12]:
+    - generic [ref=e13] [cursor=pointer]:
+      - img [ref=e15]
+      - heading "Plano Inclinado" [level=3] [ref=e23]
+      - paragraph [ref=e24]: Rampa con fricción, fuerzas y energía
+    - generic [ref=e25] [cursor=pointer]:
+      - img [ref=e27]:
+        - generic [ref=e32]: +
+        - generic [ref=e34]: "-"
+      - heading "Cargas Eléctricas" [level=3] [ref=e35]
+      - paragraph [ref=e36]: Ley de Coulomb, campo eléctrico y fuerzas
+    - generic [ref=e37] [cursor=pointer]:
+      - img [ref=e39]
+      - heading "Circuitos Eléctricos" [level=3] [ref=e50]
+      - paragraph [ref=e51]: Ley de Ohm, rapidez de corriente y electrones
+    - generic [ref=e52] [cursor=pointer]:
+      - img [ref=e54]
+      - heading "Caída Libre" [level=3] [ref=e59]
+      - paragraph [ref=e60]: Gravedad, velocidad terminal, resistencia
+    - generic [ref=e61]:
+      - img [ref=e63]
+      - heading "Colisiones" [level=3] [ref=e67]
+      - paragraph [ref=e68]: Momentum, choques elásticos e inelásticos
+      - generic [ref=e69]: Próximamente
+    - generic [ref=e70]:
+      - img [ref=e72]
+      - heading "Péndulo" [level=3] [ref=e77]
+      - paragraph [ref=e78]: Oscilación, período, energía
+      - generic [ref=e79]: Próximamente
+  - generic [ref=e80]: SELECCIONA UN EXPERIMENTO PARA COMENZAR

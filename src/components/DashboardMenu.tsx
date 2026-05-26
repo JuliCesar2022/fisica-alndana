@@ -216,17 +216,17 @@ export default function DashboardMenu() {
       title: 'Colisiones',
       description: 'Momentum, choques elásticos e inelásticos',
       color: '#f59e0b',
-      path: '#',
-      available: false,
+      path: '/collision',
+      available: true,
     },
     {
       key: 'pendulum',
       preview: <PendulumPreview />,
       title: 'Péndulo',
-      description: 'Oscilación, período, energía',
+      description: 'Oscilación, período, energía y amortiguamiento',
       color: '#f43f5e',
-      path: '#',
-      available: false,
+      path: '/pendulum',
+      available: true,
     },
   ];
 

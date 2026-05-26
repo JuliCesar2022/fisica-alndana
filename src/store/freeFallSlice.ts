@@ -54,9 +54,20 @@ const freeFallSlice = createSlice({
     setPlaying: (state, action: PayloadAction<boolean>) => { state.isPlaying = action.payload; },
     updatePhysicsData: (state, action: PayloadAction<FreeFallState['state']>) => {
       state.state = action.payload;
+    },
+    resetSimState: (state) => {
+      state.isPlaying = false;
+      state.state = {
+        time: 0,
+        y: state.height,
+        velocity: 0,
+        kineticEnergy: 0,
+        potentialEnergy: state.mass * state.gravity * state.height,
+        totalEnergy: state.mass * state.gravity * state.height,
+      };
     }
   }
 });
 
-export const { setHeight, setMass, setGravity, setPlanet, setPlaying, updatePhysicsData } = freeFallSlice.actions;
+export const { setHeight, setMass, setGravity, setPlanet, setPlaying, updatePhysicsData, resetSimState } = freeFallSlice.actions;
 export default freeFallSlice.reducer;

@@ -1,6 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { PHYSICS_DEFAULTS } from '../utils/constants';
 
+export type RampScene = 'lab' | 'mountain' | 'moon';
+
 interface RampState {
   angle: number;
   mass: number;
@@ -11,6 +13,7 @@ interface RampState {
   customMaterialName: string;
   rampLength: number;
   sensorDistances: number[];
+  scene: RampScene;
   
   // Results from physics engine
   forces: {
@@ -45,6 +48,7 @@ const initialState: RampState = {
   customMaterialName: 'Mi Material',
   rampLength: PHYSICS_DEFAULTS.rampLength,
   sensorDistances: PHYSICS_DEFAULTS.sensorDistances,
+  scene: 'lab',
   
   forces: {
     weight: 0, normalForce: 0, parallelForce: 0, frictionForce: 0, netForce: 0, acceleration: 0
@@ -107,9 +111,20 @@ export const rampSlice = createSlice({
     updatePhysicsData: (state, action: PayloadAction<{forces: RampState['forces'], state: RampState['state']}>) => {
       state.forces = action.payload.forces;
       state.state = action.payload.state;
+    },
+    setRampScene: (state, action: PayloadAction<RampScene>) => { state.scene = action.payload; },
+    resetSimState: (state) => {
+      state.isPlaying = false;
+      state.forces = { weight: 0, normalForce: 0, parallelForce: 0, frictionForce: 0, netForce: 0, acceleration: 0 };
+      state.state = {
+        time: 0, velocity: 0, position: 0, height: 0,
+        kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0,
+        onRamp: true, onGround: false,
+        sensorTimes: Array(state.sensorDistances.length).fill(null),
+      };
     }
   }
 });
 
-export const { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, setRampLength, updateSensorDistance, addSensor, removeSensor, updatePhysicsData } = rampSlice.actions;
+export const { setAngle, setMass, setGravity, setMaterial, setPlaying, setCustomFriction, setCustomMaterialName, setRampLength, updateSensorDistance, addSensor, removeSensor, updatePhysicsData, resetSimState, setRampScene } = rampSlice.actions;
 export default rampSlice.reducer;

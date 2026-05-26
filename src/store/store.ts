@@ -3,6 +3,8 @@ import rampReducer from './rampSlice';
 import electroReducer from './electroSlice';
 import circuitReducer from './circuitSlice';
 import freeFallReducer from './freeFallSlice';
+import collisionReducer from './collisionSlice';
+import pendulumReducer from './pendulumSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +12,8 @@ export const store = configureStore({
     electrostatics: electroReducer,
     circuit: circuitReducer,
     freefall: freeFallReducer,
+    collision: collisionReducer,
+    pendulum: pendulumReducer,
   },
 });
 

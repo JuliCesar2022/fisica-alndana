@@ -514,19 +514,20 @@ function ImpactRing() {
 export default function FreeFall3DScene() {
   const dispatch = useDispatch();
   const ff = useSelector((s: RootState) => s.freefall);
+  const { scene } = useThree();
 
   const simTimeRef = useRef(0);
   const isPlayingRef = useRef(false);
-  
+
   // 3D Physical state references (integrated in physical meters 0..500)
   const xRef = useRef(0);
   const yRef = useRef(ff.height);
   const zRef = useRef(0);
-  
+
   const vxRef = useRef(0);
   const vyRef = useRef(0);
   const vzRef = useRef(0);
-  
+
   const hasKickedRef = useRef(false);
 
   // Keep ref in sync with redux

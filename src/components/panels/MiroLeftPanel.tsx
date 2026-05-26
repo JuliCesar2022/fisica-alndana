@@ -41,18 +41,21 @@ import katex from 'katex';
 import { createPortal } from 'react-dom';
 
 // Ramp Actions & Presets
-import { 
-  setAngle, 
-  setMass as setRampMass, 
-  setGravity as setRampGravity, 
-  setMaterial, 
-  setPlaying as setRampPlaying, 
-  setCustomFriction, 
-  setCustomMaterialName, 
-  setRampLength, 
+import {
+  setAngle,
+  setMass as setRampMass,
+  setGravity as setRampGravity,
+  setMaterial,
+  setPlaying as setRampPlaying,
+  setCustomFriction,
+  setCustomMaterialName,
+  setRampLength,
   updateSensorDistance,
   addSensor,
-  removeSensor
+  removeSensor,
+  resetSimState as resetRampSimState,
+  setRampScene,
+  RampScene,
 } from '../../store/rampSlice';
 import { MATERIALS } from '../../utils/constants';
 
@@ -62,29 +65,55 @@ export const EVENT_RESET_FREEFALL = 'evt_reset_freefall';
 export const EVENT_ADD_CHARGE = 'evt_add_charge';
 export const EVENT_RESET_ELECTRO = 'evt_reset_electro';
 export const EVENT_MOVE_CHARGE = 'evt_move_charge';
+export const EVENT_RESET_PENDULUM = 'evt_reset_pendulum';
 
 // Free Fall Actions & Presets
-import { 
-  setHeight as setFFHeight, 
-  setMass as setFFMass, 
-  setGravity as setFFGravity, 
-  setPlanet, 
-  setPlaying as setFFPlaying 
+import {
+  setHeight as setFFHeight,
+  setMass as setFFMass,
+  setGravity as setFFGravity,
+  setPlanet,
+  setPlaying as setFFPlaying,
+  resetSimState as resetFFSimState
 } from '../../store/freeFallSlice';
 
 // Electrostatics Actions & Presets
-import { 
-  setPlaying as setElectroPlaying, 
-  updateChargeValue, 
+import {
+  setPlaying as setElectroPlaying,
+  updateChargeValue,
   setVacuumMode,
   moveCharge,
   syncChargesFromEngine,
-  deleteCharge
+  deleteCharge,
+  setSelectedCharge
 } from '../../store/electroSlice';
 
 
+// Pendulum Actions
+import {
+  setLength as setPendLength,
+  setMass as setPendMass,
+  setGravity as setPendGravity,
+  setInitialAngle,
+  setDamping,
+  setPlaying as setPendPlaying,
+  setPendulumScene,
+  resetPendulum,
+  PendulumScene,
+} from '../../store/pendulumSlice';
+
+// Collision Actions
+import {
+  setM1, setM2, setV1, setV2,
+  setRestitution, setCollisionType,
+  setPlaying as setCollisionPlaying,
+  resetSim as resetCollisionSim,
+  setCollisionScene,
+  CollisionScene,
+} from '../../store/collisionSlice';
+
 // Circuit Actions
-import { 
+import {
   setVoltage, 
   setR1, 
   setR2, 
@@ -130,10 +159,83 @@ export default function MiroLeftPanel() {
   const freefall = useSelector((s: RootState) => s.freefall);
   const electro = useSelector((s: RootState) => s.electrostatics);
   const circuit = useSelector((s: RootState) => s.circuit);
+  const collision = useSelector((s: RootState) => s.collision);
+  const pendulum = useSelector((s: RootState) => s.pendulum);
 
   // History buffer for live charts (shared)
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const prevTimeRef = useRef<number>(-1);
+
+  useEffect(() => {
+    if (ramp.isPlaying) {
+      setActiveTab('formulas');
+    }
+  }, [ramp.isPlaying]);
+
+  // Animated values for free fall when simulation finishes
+  const [animFF, setAnimFF] = useState({ y: 0, velocity: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0, timeFall: 0 });
+  const animFFFrameRef = useRef<number | null>(null);
+  const animFFDoneRef = useRef<boolean>(false);
+
+  const ffTargetRef = useRef({ y: 0, velocity: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0, timeFall: 0 });
+
+  useEffect(() => {
+    if (freefall.state.time === 0) {
+      // Reset — clear animation and go back to zeros
+      if (animFFFrameRef.current) { cancelAnimationFrame(animFFFrameRef.current); animFFFrameRef.current = null; }
+      animFFDoneRef.current = false;
+      setAnimFF({ y: 0, velocity: 0, kineticEnergy: 0, potentialEnergy: 0, totalEnergy: 0, timeFall: 0 });
+      return;
+    }
+
+    if (freefall.isPlaying) {
+      // Simulation started — begin counting, timed to match the visual fall duration
+      if (animFFFrameRef.current !== null || animFFDoneRef.current) return;
+      setActiveTab('formulas');
+      const g = freefall.gravity;
+      const h0 = freefall.height;
+      const m = freefall.mass;
+      const vImpact = Math.sqrt(2 * g * h0);
+      const tFall = Math.sqrt(2 * h0 / g);
+      const peInitial = m * g * h0;
+      const target = { y: h0, velocity: vImpact, kineticEnergy: peInitial, potentialEnergy: peInitial, totalEnergy: peInitial, timeFall: tFall };
+      ffTargetRef.current = target;
+      // 3D scene runs at 2.2× speed — match animation to visual fall time
+      const duration = (tFall / 2.2) * 1000;
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        setAnimFF({
+          y:               target.y               * ease,
+          velocity:        target.velocity        * ease,
+          kineticEnergy:   target.kineticEnergy   * ease,
+          potentialEnergy: target.potentialEnergy * ease,
+          totalEnergy:     target.totalEnergy     * ease,
+          timeFall:        target.timeFall        * ease,
+        });
+        if (t < 1) {
+          animFFFrameRef.current = requestAnimationFrame(tick);
+        } else {
+          animFFFrameRef.current = null;
+          animFFDoneRef.current = true;
+          setAnimFF({ ...target });
+        }
+      };
+      animFFFrameRef.current = requestAnimationFrame(tick);
+      return;
+    }
+
+    if (!freefall.isPlaying && freefall.state.time > 0) {
+      // Simulation ended — snap to final values if count is still running
+      if (animFFFrameRef.current !== null) {
+        cancelAnimationFrame(animFFFrameRef.current);
+        animFFFrameRef.current = null;
+      }
+      animFFDoneRef.current = true;
+      setAnimFF({ ...ffTargetRef.current });
+    }
+  }, [freefall.isPlaying, freefall.state.time]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear or sync telemetry history buffer based on running simulations
   useEffect(() => {
@@ -424,13 +526,39 @@ export default function MiroLeftPanel() {
             </button>
           </div>
         </div>
+
+        {/* ── Scene Selector ── */}
+        <div className="control-group">
+          <div className="control-label">
+            <span><Globe size={14} /> Escenario</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '6px' }}>
+            {([
+              { key: 'lab',      label: '🔬 Laboratorio' },
+              { key: 'mountain', label: '⛰️ Montaña'     },
+              { key: 'moon',     label: '🌕 Luna'         },
+            ] as { key: RampScene; label: string }[]).map(s => (
+              <button
+                key={s.key}
+                className={`material-btn ${(ramp.scene ?? 'lab') === s.key ? 'active' : ''}`}
+                onClick={() => dispatch(setRampScene(s.key))}
+                style={{ fontSize: '10px', padding: '7px 4px', textAlign: 'center' }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     );
   };
 
   const renderRampFormulas = () => {
-    const { angle, mass, material, forces } = ramp;
+    const { angle, mass, gravity, material } = ramp;
     const mu = material === 'custom' ? ramp.customFriction : (MATERIALS[material]?.frictionKinetic ?? 0.35);
+    const simFinished = !ramp.isPlaying && ramp.state.time > 0;
+    const f = ramp.forces;
+    const dash = '—';
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -443,42 +571,54 @@ export default function MiroLeftPanel() {
 
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#ef4444' }}>Peso (F_g)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{forces.weight.toFixed(2)} N</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{simFinished ? `${f.weight.toFixed(2)} N` : dash}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#3b82f6' }}>F. Normal (N)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{forces.normalForce.toFixed(2)} N</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{simFinished ? `${f.normalForce.toFixed(2)} N` : dash}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#f59e0b' }}>F. Paralela</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{forces.parallelForce.toFixed(2)} N</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{simFinished ? `${f.parallelForce.toFixed(2)} N` : dash}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#10b981' }}>Fricción (F_f)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{forces.frictionForce.toFixed(2)} N</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{simFinished ? `${f.frictionForce.toFixed(2)} N` : dash}</span>
         </div>
         <div className="formula-row" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#f8fafc', fontWeight: 'bold' }}>Fuerza Neta</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{forces.netForce.toFixed(2)} N</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{simFinished ? `${f.netForce.toFixed(2)} N` : dash}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#a5b4fc' }}>Aceleración</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{forces.acceleration.toFixed(2)} m/s²</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{simFinished ? `${f.acceleration.toFixed(2)} m/s²` : dash}</span>
         </div>
 
         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-          <div style={{ fontSize: '10px', color: '#ef4444', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`F_g = m \\cdot g = ${mass} \\cdot 9.81 = ${forces.weight.toFixed(2)}\\text{ N}`, true)}
-          </div>
-          <div style={{ fontSize: '10px', color: '#3b82f6', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`N = F_g \\cdot \\cos(${angle}^\\circ) = ${forces.normalForce.toFixed(2)}\\text{ N}`, true)}
-          </div>
-          <div style={{ fontSize: '10px', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`F_f = \\mu \\cdot N = ${mu} \\cdot ${forces.normalForce.toFixed(2)} = ${forces.frictionForce.toFixed(2)}\\text{ N}`, true)}
-          </div>
-          <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`a = \\frac{F_{neta}}{m} = ${forces.acceleration.toFixed(2)}\\text{ m/s}^2`, true)}
-          </div>
+          {simFinished ? (
+            <>
+              <div style={{ fontSize: '10px', color: '#ef4444', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`F_g = m \\cdot g = ${mass} \\cdot ${gravity} = ${f.weight.toFixed(2)}\\text{ N}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#3b82f6', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`N = F_g \\cdot \\cos(${angle}^\\circ) = ${f.normalForce.toFixed(2)}\\text{ N}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`F_f = \\mu \\cdot N = ${mu} \\cdot ${f.normalForce.toFixed(2)} = ${f.frictionForce.toFixed(2)}\\text{ N}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`a = \\frac{F_{neta}}{m} = ${f.acceleration.toFixed(2)}\\text{ m/s}^2`, true)}
+              </div>
+            </>
+          ) : ramp.isPlaying ? (
+            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+              Simulación en curso...
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+              Inicia la simulación para ver los resultados
+            </div>
+          )}
         </div>
       </div>
     );
@@ -552,12 +692,9 @@ export default function MiroLeftPanel() {
   };
 
   const renderFreeFallFormulas = () => {
-    const g = freefall.gravity;
-    const h = freefall.state.y;
-    const v = freefall.state.velocity;
-    const pe = freefall.state.potentialEnergy;
-    const ke = freefall.state.kineticEnergy;
-    const total = freefall.state.totalEnergy;
+    const { gravity: g, mass: m, height: h0 } = freefall;
+    const simFinished = !freefall.isPlaying && freefall.state.time > 0;
+    const f = animFF;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -569,36 +706,48 @@ export default function MiroLeftPanel() {
         </div>
 
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span className="formula-name" style={{ color: '#3b82f6' }}>Altura Actual (y)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{h.toFixed(1)} m</span>
+          <span className="formula-name" style={{ color: '#3b82f6' }}>Altura inicial (h₀)</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{`${f.y.toFixed(1)} m`}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span className="formula-name" style={{ color: '#10b981' }}>Velocidad (v)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{v.toFixed(2)} m/s</span>
+          <span className="formula-name" style={{ color: '#10b981' }}>Vel. impacto (v)</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{`${f.velocity.toFixed(2)} m/s`}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#eab308' }}>E. Potencial (E_p)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{pe.toFixed(0)} J</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{`${f.potentialEnergy.toFixed(1)} J`}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#ef4444' }}>E. Cinética (E_k)</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{ke.toFixed(0)} J</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{`${f.kineticEnergy.toFixed(1)} J`}</span>
         </div>
         <div className="formula-row" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span className="formula-name" style={{ color: '#f8fafc', fontWeight: 'bold' }}>E. Mecánica Total</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{total.toFixed(0)} J</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{`${f.totalEnergy.toFixed(1)} J`}</span>
         </div>
 
         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-          <div style={{ fontSize: '10px', color: '#eab308', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`E_p = m \\cdot g \\cdot y = ${pe.toFixed(1)}\\text{ J}`, true)}
-          </div>
-          <div style={{ fontSize: '10px', color: '#ef4444', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`E_k = \\frac{1}{2} m \\cdot v^2 = ${ke.toFixed(1)}\\text{ J}`, true)}
-          </div>
-          <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
-            {math(`v(t) = g \\cdot t = ${v.toFixed(2)}\\text{ m/s}`, true)}
-          </div>
+          {simFinished ? (
+            <>
+              <div style={{ fontSize: '10px', color: '#eab308', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`E_p = m \\cdot g \\cdot h_0 = ${m} \\cdot ${g} \\cdot ${h0} = ${f.potentialEnergy.toFixed(1)}\\text{ J}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#ef4444', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`v = \\sqrt{2gh_0} = ${f.velocity.toFixed(2)}\\text{ m/s}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`t = \\sqrt{\\frac{2h_0}{g}} = ${f.timeFall.toFixed(3)}\\text{ s}`, true)}
+              </div>
+            </>
+          ) : freefall.isPlaying ? (
+            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+              Simulación en curso...
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+              Inicia la simulación para ver los resultados
+            </div>
+          )}
         </div>
       </div>
     );
@@ -664,7 +813,11 @@ export default function MiroLeftPanel() {
   };
 
   const renderElectroFormulas = () => {
-    const target = electro.charges.find(c => c.id === electro.selectedChargeId);
+    const effectiveId = electro.selectedChargeId
+      ?? electro.charges.find(c => !c.isStatic)?.id
+      ?? electro.charges[0]?.id
+      ?? null;
+    const target = electro.charges.find(c => c.id === effectiveId);
     let fStr = '—';
     if (target && electro.netForce !== null) {
       fStr = electro.netForce > 1000 || (electro.netForce < 0.001 && electro.netForce > 0)
@@ -696,16 +849,269 @@ export default function MiroLeftPanel() {
         </div>
 
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span className="formula-name" style={{ color: '#cbd5e1' }}>Carga Seleccionada</span>
-          <span className="formula-value" style={{ fontWeight: 'bold' }}>{target ? `${target.charge > 0 ? '+' : ''}${target.charge} µC` : 'Ninguna'}</span>
+          <span className="formula-name" style={{ color: '#cbd5e1' }}>Cargas en escena</span>
+          <span className="formula-value" style={{ fontWeight: 'bold' }}>{electro.charges.length}</span>
         </div>
         <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span className="formula-name" style={{ color: '#ec4899' }}>Fuerza Neta Vectorial</span>
+          <span className="formula-name" style={{ color: '#cbd5e1' }}>Carga Seleccionada</span>
+          <span className="formula-value" style={{ fontWeight: 'bold', color: target ? (target.charge > 0 ? '#ef4444' : '#3b82f6') : '#475569' }}>
+            {target
+              ? `${target.charge > 0 ? '+' : ''}${target.charge} µC${!electro.selectedChargeId ? ' (auto)' : ''}`
+              : 'Sin cargas'}
+          </span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span className="formula-name" style={{ color: '#ec4899' }}>Fuerza Neta</span>
           <span className="formula-value" style={{ fontWeight: 'bold', color: '#ec4899' }}>{fStr}</span>
         </div>
 
         <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '9.5px', color: '#a5b4fc', textAlign: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px' }}>
           {math(mathStr, true)}
+        </div>
+      </div>
+    );
+  };
+
+  // ----------------------------------------------------
+  // COLLISIONS PANEL RENDER
+  // ----------------------------------------------------
+  const renderCollisionConfig = () => {
+    const typeBtn = (type: 'elastic' | 'inelastic' | 'partial', label: string, color: string) => (
+      <button
+        onClick={() => dispatch(setCollisionType(type))}
+        style={{
+          flex: 1, padding: '7px 4px', borderRadius: '8px', border: 'none',
+          background: collision.collisionType === type ? color : 'rgba(255,255,255,0.05)',
+          color: collision.collisionType === type ? '#fff' : '#94a3b8',
+          fontSize: '11px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+        }}
+      >{label}</button>
+    );
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* Collision type selector */}
+        <div>
+          <span style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '6px', display: 'block' }}>Tipo de Colisión</span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {typeBtn('elastic',    'Elástica',   '#10b981')}
+            {typeBtn('inelastic',  'Inelástica', '#ef4444')}
+            {typeBtn('partial',    'Parcial',    '#f59e0b')}
+          </div>
+        </div>
+
+        {/* Custom restitution */}
+        {collision.collisionType === 'partial' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Coef. Restitución (e)</span>
+              <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 'bold' }}>{collision.restitution.toFixed(2)}</span>
+            </div>
+            <input type="range" min="0.01" max="0.99" step="0.01"
+              value={collision.restitution}
+              onChange={e => dispatch(setRestitution(Number(e.target.value)))}
+              style={{ width: '100%', accentColor: '#f59e0b' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#475569' }}>
+              <span>0 (inelástica)</span><span>1 (elástica)</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+          <span style={{ fontSize: '11px', color: '#818cf8', fontWeight: 600 }}>Cuerpo 1 (Rojo)</span>
+        </div>
+
+        {/* Mass 1 */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Masa (m₁)</span>
+            <span style={{ fontSize: '11px', color: '#f87171', fontWeight: 'bold' }}>{collision.m1.toFixed(1)} kg</span>
+          </div>
+          <input type="range" min="0.5" max="10" step="0.1"
+            value={collision.m1}
+            onChange={e => dispatch(setM1(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#ef4444' }}
+          />
+        </div>
+
+        {/* Velocity 1 */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Velocidad inicial (v₁)</span>
+            <span style={{ fontSize: '11px', color: '#f87171', fontWeight: 'bold' }}>{collision.v1 >= 0 ? '+' : ''}{collision.v1.toFixed(1)} m/s</span>
+          </div>
+          <input type="range" min="-10" max="10" step="0.5"
+            value={collision.v1}
+            onChange={e => dispatch(setV1(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#ef4444' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#475569' }}>
+            <span>← izquierda</span><span>derecha →</span>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+          <span style={{ fontSize: '11px', color: '#818cf8', fontWeight: 600 }}>Cuerpo 2 (Azul)</span>
+        </div>
+
+        {/* Mass 2 */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Masa (m₂)</span>
+            <span style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 'bold' }}>{collision.m2.toFixed(1)} kg</span>
+          </div>
+          <input type="range" min="0.5" max="10" step="0.1"
+            value={collision.m2}
+            onChange={e => dispatch(setM2(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#3b82f6' }}
+          />
+        </div>
+
+        {/* Velocity 2 */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Velocidad inicial (v₂)</span>
+            <span style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 'bold' }}>{collision.v2 >= 0 ? '+' : ''}{collision.v2.toFixed(1)} m/s</span>
+          </div>
+          <input type="range" min="-10" max="10" step="0.5"
+            value={collision.v2}
+            onChange={e => dispatch(setV2(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#3b82f6' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#475569' }}>
+            <span>← izquierda</span><span>derecha →</span>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div style={{ background: 'rgba(129,140,248,0.07)', border: '1px solid rgba(129,140,248,0.15)', borderRadius: '8px', padding: '10px', fontSize: '10px', color: '#94a3b8', lineHeight: 1.5 }}>
+          <strong style={{ color: '#818cf8' }}>Positivo (+)</strong> = mueve hacia la derecha<br />
+          <strong style={{ color: '#818cf8' }}>Negativo (−)</strong> = mueve hacia la izquierda<br />
+          El cuerpo 1 empieza a la izquierda del cuerpo 2.
+        </div>
+
+        {/* ── Scene Selector ── */}
+        <div>
+          <span style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '6px', display: 'block' }}>Escenario</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+            {([
+              { key: 'space',   label: '🌌 Espacio'  },
+              { key: 'ice',     label: '🧊 Hielo'    },
+              { key: 'billiard',label: '🎱 Billar'   },
+            ] as { key: CollisionScene; label: string }[]).map(s => (
+              <button
+                key={s.key}
+                className={`material-btn ${(collision.scene ?? 'space') === s.key ? 'active' : ''}`}
+                onClick={() => dispatch(setCollisionScene(s.key))}
+                style={{ fontSize: '10px', padding: '7px 4px', textAlign: 'center' }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCollisionFormulas = () => {
+    const r = collision.results;
+    const done = !collision.isPlaying && r !== null;
+    const dash = '—';
+
+    const fmtV = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(3)} m/s`;
+    const fmtN = (n: number) => `${n.toFixed(4)}`;
+
+    const typeLabel =
+      collision.collisionType === 'elastic'   ? 'Elástica (e = 1)'   :
+      collision.collisionType === 'inelastic' ? 'Perfectamente Inelástica (e = 0)' :
+                                                 `Parcialmente Elástica (e = ${collision.restitution.toFixed(2)})`;
+    const typeColor =
+      collision.collisionType === 'elastic'   ? '#10b981' :
+      collision.collisionType === 'inelastic' ? '#ef4444' : '#f59e0b';
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px', marginBottom: '4px' }}>
+          <h3 style={{ fontSize: '12px', color: '#818cf8', fontWeight: 600, margin: '0 0 4px 0' }}>Colisiones — Conservación de Cantidad de Movimiento</h3>
+          <span style={{ fontSize: '10px', color: typeColor, fontWeight: 600 }}>{typeLabel}</span>
+          <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.4, margin: '4px 0 0 0' }}>
+            La cantidad de movimiento total se conserva en cualquier tipo de colisión.
+          </p>
+        </div>
+
+        {/* Before */}
+        <div style={{ fontSize: '10px', color: '#818cf8', fontWeight: 600, marginBottom: '-4px' }}>Antes de la colisión</div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#f87171' }}>v₁ inicial</span>
+          <span style={{ fontWeight: 'bold' }}>{fmtV(collision.v1)}</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#93c5fd' }}>v₂ inicial</span>
+          <span style={{ fontWeight: 'bold' }}>{fmtV(collision.v2)}</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#a5b4fc' }}>p total (antes)</span>
+          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.pBefore)} kg·m/s` : dash}</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#eab308' }}>E cinética (antes)</span>
+          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.keBefore)} J` : dash}</span>
+        </div>
+
+        {/* After */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', fontSize: '10px', color: '#10b981', fontWeight: 600, marginBottom: '-4px' }}>Después de la colisión</div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#f87171' }}>v₁ final</span>
+          <span style={{ fontWeight: 'bold', color: done ? '#f87171' : '#475569' }}>{done ? fmtV(r!.v1After) : dash}</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#93c5fd' }}>v₂ final</span>
+          <span style={{ fontWeight: 'bold', color: done ? '#93c5fd' : '#475569' }}>{done ? fmtV(r!.v2After) : dash}</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#a5b4fc' }}>p total (después)</span>
+          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.pAfter)} kg·m/s` : dash}</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#eab308' }}>E cinética (después)</span>
+          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.keAfter)} J` : dash}</span>
+        </div>
+        <div className="formula-row" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>Energía perdida (ΔKE)</span>
+          <span style={{ fontWeight: 'bold', color: done && r!.keLost > 0.001 ? '#ef4444' : '#10b981' }}>
+            {done ? `${fmtN(r!.keLost)} J` : dash}
+          </span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#a5b4fc' }}>Impulso (J)</span>
+          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.impulse)} N·s` : dash}</span>
+        </div>
+
+        {/* Formulas */}
+        <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+          {done ? (
+            <>
+              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`v_1' = \\frac{(m_1 - e\\,m_2)v_1 + m_2(1+e)v_2}{m_1+m_2} = ${r!.v1After.toFixed(3)}\\text{ m/s}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`v_2' = \\frac{(m_2 - e\\,m_1)v_2 + m_1(1+e)v_1}{m_1+m_2} = ${r!.v2After.toFixed(3)}\\text{ m/s}`, true)}
+              </div>
+              <div style={{ fontSize: '10px', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+                {math(`p_{total} = ${r!.pBefore.toFixed(3)} \\approx ${r!.pAfter.toFixed(3)}\\text{ kg·m/s}\\;\\checkmark`, true)}
+              </div>
+            </>
+          ) : collision.isPlaying ? (
+            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+              Simulación en curso...
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
+              Ejecuta la simulación para ver los resultados
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1216,12 +1622,182 @@ export default function MiroLeftPanel() {
     );
   };
 
+  // ----------------------------------------------------
+  // PENDULUM PANEL RENDER
+  // ----------------------------------------------------
+  const renderPendulumConfig = () => {
+    const gravPresets = [
+      { name: 'Tierra', g: 9.81 }, { name: 'Luna', g: 1.62 },
+      { name: 'Marte', g: 3.71 }, { name: 'Júpiter', g: 24.79 },
+    ];
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Longitud (L)</span>
+            <span style={{ fontSize: '11px', color: '#a5b4fc', fontWeight: 'bold' }}>{pendulum.length.toFixed(2)} m</span>
+          </div>
+          <input type="range" min="0.3" max="5.0" step="0.05" value={pendulum.length}
+            onChange={e => { dispatch(setPendLength(Number(e.target.value))); window.dispatchEvent(new Event(EVENT_RESET_PENDULUM)); }}
+            style={{ width: '100%', accentColor: '#a5b4fc' }} />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Masa (m)</span>
+            <span style={{ fontSize: '11px', color: '#a5b4fc', fontWeight: 'bold' }}>{pendulum.mass.toFixed(1)} kg</span>
+          </div>
+          <input type="range" min="0.1" max="10.0" step="0.1" value={pendulum.mass}
+            onChange={e => dispatch(setPendMass(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#a5b4fc' }} />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Ángulo inicial (θ₀)</span>
+            <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 'bold' }}>{pendulum.initialAngle}°</span>
+          </div>
+          <input type="range" min="5" max="85" step="1" value={pendulum.initialAngle}
+            onChange={e => { dispatch(setInitialAngle(Number(e.target.value))); window.dispatchEvent(new Event(EVENT_RESET_PENDULUM)); }}
+            style={{ width: '100%', accentColor: '#f59e0b' }} />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Amortiguamiento (b)</span>
+            <span style={{ fontSize: '11px', color: '#f87171', fontWeight: 'bold' }}>{pendulum.damping.toFixed(2)}</span>
+          </div>
+          <input type="range" min="0.00" max="0.5" step="0.01" value={pendulum.damping}
+            onChange={e => dispatch(setDamping(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#f87171' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#475569' }}>
+            <span>Sin fricción</span><span>Muy amortiguado</span>
+          </div>
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#cbd5e1' }}>Gravedad (g)</span>
+            <span style={{ fontSize: '11px', color: '#a5b4fc', fontWeight: 'bold' }}>{pendulum.gravity.toFixed(2)} m/s²</span>
+          </div>
+          <input type="range" min="0.5" max="30" step="0.1" value={pendulum.gravity}
+            onChange={e => { dispatch(setPendGravity(Number(e.target.value))); window.dispatchEvent(new Event(EVENT_RESET_PENDULUM)); }}
+            style={{ width: '100%', accentColor: '#a5b4fc' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '8px' }}>
+            {gravPresets.map(p => (
+              <button key={p.name}
+                className={`material-btn ${Math.abs(pendulum.gravity - p.g) < 0.01 ? 'active' : ''}`}
+                onClick={() => { dispatch(setPendGravity(p.g)); window.dispatchEvent(new Event(EVENT_RESET_PENDULUM)); }}
+                style={{ fontSize: '11px', padding: '6px' }}>{p.name}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Scene selector */}
+        <div>
+          <span style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '6px', display: 'block' }}>Escenario</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+            {([
+              { key: 'lab',   label: '🔬 Laboratorio' },
+              { key: 'moon',  label: '🌕 Luna'         },
+              { key: 'water', label: '💧 Agua'          },
+            ] as { key: PendulumScene; label: string }[]).map(s => (
+              <button key={s.key}
+                className={`material-btn ${(pendulum.scene ?? 'lab') === s.key ? 'active' : ''}`}
+                onClick={() => dispatch(setPendulumScene(s.key))}
+                style={{ fontSize: '10px', padding: '7px 4px', textAlign: 'center' }}
+              >{s.label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPendulumFormulas = () => {
+    const { length: L, mass: m, gravity: g, initialAngle, damping: b } = pendulum;
+    const theta0 = (initialAngle * Math.PI) / 180;
+    const T = 2 * Math.PI * Math.sqrt(L / g);
+    const vMax = Math.sqrt(2 * g * L * (1 - Math.cos(theta0)));
+    const Etotal = m * g * L * (1 - Math.cos(theta0));
+    const { state: ps } = pendulum;
+    const running = pendulum.isPlaying || ps.time > 0;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px' }}>
+          <h3 style={{ fontSize: '12px', color: '#a5b4fc', fontWeight: 600, margin: '0 0 6px 0' }}>Péndulo Simple</h3>
+          <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.4, margin: 0 }}>
+            Oscilación bajo gravedad con integración numérica RK4. La energía se conserva sin amortiguamiento.
+          </p>
+        </div>
+
+        {/* Theoretical values (always shown) */}
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#a5b4fc' }}>Período teórico (T)</span>
+          <span style={{ fontWeight: 'bold' }}>{T.toFixed(3)} s</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#f59e0b' }}>v_max (en base)</span>
+          <span style={{ fontWeight: 'bold' }}>{vMax.toFixed(3)} m/s</span>
+        </div>
+        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <span style={{ color: '#10b981' }}>E. Mecánica total</span>
+          <span style={{ fontWeight: 'bold' }}>{Etotal.toFixed(3)} J</span>
+        </div>
+
+        {/* Live values */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: '#ef4444' }}>E. Cinética (KE)</span>
+            <span style={{ fontWeight: 'bold' }}>{running ? `${ps.kineticEnergy.toFixed(3)} J` : '—'}</span>
+          </div>
+          <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: '#3b82f6' }}>E. Potencial (PE)</span>
+            <span style={{ fontWeight: 'bold' }}>{running ? `${ps.potentialEnergy.toFixed(3)} J` : '—'}</span>
+          </div>
+          <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: '#94a3b8' }}>Período medido</span>
+            <span style={{ fontWeight: 'bold' }}>{ps.period > 0 ? `${ps.period.toFixed(3)} s` : '—'}</span>
+          </div>
+          <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: '#94a3b8' }}>Oscilaciones (n)</span>
+            <span style={{ fontWeight: 'bold' }}>{running ? ps.oscillations : '—'}</span>
+          </div>
+        </div>
+
+        {/* KaTeX equations */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+            {math(`T = 2\\pi\\sqrt{\\frac{L}{g}} = 2\\pi\\sqrt{\\frac{${L}}{${g}}} = ${T.toFixed(3)}\\text{ s}`, true)}
+          </div>
+          <div style={{ fontSize: '10px', color: '#f59e0b', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+            {math(`v_{max} = \\sqrt{2gL(1-\\cos\\theta_0)} = ${vMax.toFixed(3)}\\text{ m/s}`, true)}
+          </div>
+          <div style={{ fontSize: '10px', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+            {math(`E = mgL(1-\\cos\\theta_0) = ${Etotal.toFixed(3)}\\text{ J}`, true)}
+          </div>
+          {b > 0 && (
+            <div style={{ fontSize: '10px', color: '#f87171', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+              {math(`\\ddot{\\theta} = -\\frac{g}{L}\\sin\\theta - b\\dot{\\theta},\\quad b=${b}`, true)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Dispatch play actions based on current active route
   const handlePlayToggle = () => {
     if (path === '/ramp') {
       dispatch(setRampPlaying(!ramp.isPlaying));
     } else if (path === '/freefall') {
       dispatch(setFFPlaying(!freefall.isPlaying));
+    } else if (path === '/collision') {
+      dispatch(setCollisionPlaying(!collision.isPlaying));
+    } else if (path === '/pendulum') {
+      dispatch(setPendPlaying(!pendulum.isPlaying));
     } else if (path === '/electrostatics') {
       dispatch(setElectroPlaying(!electro.isPlaying));
     } else if (path === '/circuit') {
@@ -1231,10 +1807,15 @@ export default function MiroLeftPanel() {
 
   const handleReset = () => {
     if (path === '/ramp') {
-      dispatch(setRampPlaying(false));
+      dispatch(resetRampSimState());
       window.dispatchEvent(new Event(EVENT_RESET_RAMP));
+    } else if (path === '/collision') {
+      dispatch(resetCollisionSim());
+    } else if (path === '/pendulum') {
+      dispatch(resetPendulum());
+      window.dispatchEvent(new Event(EVENT_RESET_PENDULUM));
     } else if (path === '/freefall') {
-      dispatch(setFFPlaying(false));
+      dispatch(resetFFSimState());
       window.dispatchEvent(new Event(EVENT_RESET_FREEFALL));
     } else if (path === '/electrostatics') {
       dispatch(setElectroPlaying(false));
@@ -1249,6 +1830,7 @@ export default function MiroLeftPanel() {
       case '/freefall': return 'Caída Libre';
       case '/electrostatics': return 'Cargas Eléctricas';
       case '/circuit': return 'Resistencias CAD';
+      case '/collision': return 'Colisiones';
       default: return 'Física 3D';
     }
   };
@@ -1258,6 +1840,8 @@ export default function MiroLeftPanel() {
     if (path === '/freefall') return freefall.isPlaying;
     if (path === '/electrostatics') return electro.isPlaying;
     if (path === '/circuit') return !circuit.isOpen; // closed circuit is running
+    if (path === '/collision') return collision.isPlaying;
+    if (path === '/pendulum') return pendulum.isPlaying;
     return false;
   };
 
@@ -1545,6 +2129,8 @@ export default function MiroLeftPanel() {
               {path === '/freefall' && renderFreeFallConfig()}
               {path === '/electrostatics' && renderElectroConfig()}
               {path === '/circuit' && renderCircuitConfig()}
+              {path === '/collision' && renderCollisionConfig()}
+              {path === '/pendulum' && renderPendulumConfig()}
             </>
           )}
 
@@ -1554,6 +2140,8 @@ export default function MiroLeftPanel() {
               {path === '/freefall' && renderFreeFallFormulas()}
               {path === '/electrostatics' && renderElectroFormulas()}
               {path === '/circuit' && renderCircuitFormulas()}
+              {path === '/collision' && renderCollisionFormulas()}
+              {path === '/pendulum' && renderPendulumFormulas()}
             </>
           )}
 

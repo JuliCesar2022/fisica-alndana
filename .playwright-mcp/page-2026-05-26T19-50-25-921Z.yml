@@ -1,0 +1,99 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic:
+      - banner:
+        - generic [ref=e92]:
+          - img [ref=e94]
+          - heading "Laboratorio de Física - Miguel Aldana" [level=1] [ref=e98]
+        - navigation [ref=e99]:
+          - button "Rampa" [ref=e100] [cursor=pointer]:
+            - img [ref=e101]
+            - text: Rampa
+          - button "Caída Libre" [ref=e103] [cursor=pointer]:
+            - img [ref=e104]
+            - text: Caída Libre
+          - button "Cargas" [ref=e113] [cursor=pointer]:
+            - img [ref=e114]
+            - text: Cargas
+          - button "Circuitos" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+            - text: Circuitos
+          - button "Colisiones" [ref=e119] [cursor=pointer]:
+            - img [ref=e120]
+            - text: Colisiones
+      - generic [ref=e127]:
+        - button "Regresar al Menú" [ref=e128] [cursor=pointer]:
+          - img [ref=e129]
+        - button "Herramienta Seleccionar (V)" [ref=e133] [cursor=pointer]:
+          - img [ref=e134]
+        - button "Ajustes y Controles" [ref=e138] [cursor=pointer]:
+          - img [ref=e139]
+        - button "Fórmulas y Procedimiento" [ref=e140] [cursor=pointer]:
+          - img [ref=e141]
+        - button [ref=e144]:
+          - img [ref=e145]
+        - button "Iniciar Simulación" [ref=e150] [cursor=pointer]:
+          - img [ref=e151]
+        - button "Reiniciar Simulación" [ref=e153] [cursor=pointer]:
+          - img [ref=e154]
+      - generic [ref=e157]:
+        - generic [ref=e158]:
+          - heading "Inventario de Cargas" [level=2] [ref=e159]:
+            - img [ref=e160]
+            - text: Inventario de Cargas
+          - generic [ref=e162]: "2"
+        - generic [ref=e164]:
+          - generic [ref=e165]:
+            - generic [ref=e167] [cursor=pointer]:
+              - generic [ref=e169]: Carga 1
+              - generic [ref=e170]: +5 µC
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - generic [ref=e173]: Carga (µC)
+                - generic [ref=e174]: +5 µC
+              - slider [ref=e175] [cursor=pointer]: "5"
+            - generic [ref=e176]:
+              - generic [ref=e177]:
+                - generic [ref=e178]: X
+                - spinbutton [ref=e179]: "-120"
+              - generic [ref=e180]:
+                - generic [ref=e181]: "Y"
+                - spinbutton [ref=e182]: "24"
+              - generic [ref=e183]:
+                - generic [ref=e184]: Z
+                - spinbutton [ref=e185]: "0"
+            - generic [ref=e186]:
+              - button "Seleccionar" [ref=e187] [cursor=pointer]:
+                - img [ref=e188]
+                - text: Seleccionar
+              - button "Desanclar carga" [ref=e190] [cursor=pointer]:
+                - img [ref=e191]
+              - button "Eliminar carga" [ref=e195] [cursor=pointer]:
+                - img [ref=e196]
+          - generic [ref=e199]:
+            - generic [ref=e201] [cursor=pointer]:
+              - generic [ref=e203]: Carga 2
+              - generic [ref=e204]: "-5 µC"
+            - generic [ref=e205]:
+              - generic [ref=e206]:
+                - generic [ref=e207]: Carga (µC)
+                - generic [ref=e208]: "-5 µC"
+              - slider [ref=e209] [cursor=pointer]: "-5"
+            - generic [ref=e210]:
+              - generic [ref=e211]:
+                - generic [ref=e212]: X
+                - spinbutton [ref=e213]: "120"
+              - generic [ref=e214]:
+                - generic [ref=e215]: "Y"
+                - spinbutton [ref=e216]: "24"
+              - generic [ref=e217]:
+                - generic [ref=e218]: Z
+                - spinbutton [ref=e219]: "0"
+            - generic [ref=e220]:
+              - button "Seleccionar" [ref=e221] [cursor=pointer]:
+                - img [ref=e222]
+                - text: Seleccionar
+              - button "Anclar carga" [ref=e224] [cursor=pointer]:
+                - img [ref=e225]
+              - button "Eliminar carga" [ref=e227] [cursor=pointer]:
+                - img [ref=e228]

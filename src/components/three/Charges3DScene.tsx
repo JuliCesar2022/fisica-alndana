@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Stars, Text, OrbitControls, TransformControls } from '@react-three/drei';
+import InfiniteGround from './InfiniteGround';
 import { useSelector, useDispatch } from 'react-redux';
 import * as THREE from 'three';
 import { RootState } from '../../store/store';
@@ -10,7 +11,7 @@ import {
   setSelectedCharge,
   PointChargeState,
 } from '../../store/electroSlice';
-import { ElectrostaticsCalculator } from '../../physics/ElectrostaticsCalculator';
+import { ElectrostaticsCalculator, PointCharge } from '../../physics/ElectrostaticsCalculator';
 
 const K_COULOMB = 8.99e9;
 
@@ -205,15 +206,15 @@ function ElectroPhysicsLoop({
         posRef.current = charges.map(c => ({ ...c }));
         velRef.current = charges.map(() => ({ vx: 0, vy: 0, vz: 0 }));
       } else if (selectedChargeId) {
-        // Sync position of the selected charge being dragged
+        // Sync position of the selected charge being dragged (e.g. via TransformControls)
         const sc = charges.find(c => c.id === selectedChargeId);
         if (sc) {
           const index = posRef.current.findIndex(c => c.id === selectedChargeId);
           if (index !== -1) {
-            posRef.current[index].x = sc.x;
-            posRef.current[index].y = sc.y;
-            posRef.current[index].z = sc.z;
-            velRef.current[index] = { vx: 0, vy: 0, vz: 0 }; // kill momentum while dragging
+            const cur = posRef.current[index];
+            const moved = Math.abs(sc.x - cur.x) + Math.abs(sc.y - cur.y) + Math.abs(sc.z - cur.z) > 1;
+            posRef.current[index] = { ...cur, x: sc.x, y: sc.y, z: sc.z };
+            if (moved) velRef.current[index] = { vx: 0, vy: 0, vz: 0 };
           }
         }
       }
@@ -251,9 +252,13 @@ function ElectroPhysicsLoop({
           const distSq = dx * dx + dy * dy + dz * dz;
           const dist = Math.sqrt(distSq);
 
-          // Prevent force singularity by capping min distance in calculations to the physical sphere diameter (48px)
+          // When opposite charges are touching, suppress Coulomb force to stop oscillation
+          const attracting = c.charge * other.charge < 0;
+          if (attracting && dist <= 52) continue;
+
+          // Prevent force singularity — cap min distance to sphere diameter (48px)
           const safeDist = Math.max(dist, 48);
-          const distM = safeDist / 100; // pixels to meters scale
+          const distM = safeDist / 100;
 
           // Coulomb's Law: F = k * q1 * q2 / r^2
           const forceMag = (500 * c.charge * other.charge) / (distM * distM);
@@ -274,19 +279,22 @@ function ElectroPhysicsLoop({
         const ay = (fy * forceScale) / mass;
         const az = (fz * forceScale) / mass;
 
-        const drag = 0.94; // Air resistance
+        const drag = 0.88; // Air resistance — high enough to converge to equilibrium
         let vx = (c.vx + ax * dt) * drag;
         let vy = (c.vy + ay * dt) * drag;
         let vz = (c.vz + az * dt) * drag;
 
         // Cap maximum velocity to completely eliminate tunneling at ultra-high accelerations
-        const maxVel = 260; 
+        const maxVel = 180;
         const velMag = Math.sqrt(vx * vx + vy * vy + vz * vz);
         if (velMag > maxVel) {
           vx = (vx / velMag) * maxVel;
           vy = (vy / velMag) * maxVel;
           vz = (vz / velMag) * maxVel;
         }
+
+        // Snap to zero when nearly stopped so the system converges to equilibrium
+        if (velMag < 0.8) { vx = 0; vy = 0; vz = 0; }
 
         const newX = c.x + vx * dt * 45;
         const newY = c.y + vy * dt * 45;
@@ -395,18 +403,23 @@ function ElectroPhysicsLoop({
       });
 
       const updated = states.map(({ index, vx, vy, vz, ...rest }) => rest);
+      // Store originals in posRef BEFORE dispatch — Immer freezes the copies given
+      // to Redux, not these originals, so posRef always holds mutable objects.
       posRef.current = updated;
-      onUpdate(updated);
+      onUpdate(updated.map(c => ({ ...c })));
     }
 
-    // 2. Always compute and dispatch the netForce of the selected charge for the formula panel in real-time
-    if (selectedChargeId) {
-      const selC = charges.find(ch => ch.id === selectedChargeId);
+    // 2. Compute netForce for selected charge, or fallback to first non-static
+    const effectiveId = selectedChargeId ?? charges.find(ch => !ch.isStatic)?.id ?? null;
+    if (effectiveId) {
+      const selC = charges.find(ch => ch.id === effectiveId);
       if (selC) {
-        const targetCharge = { id: selC.id, charge: selC.charge, x: selC.x, y: selC.y, z: selC.z, isStatic: selC.isStatic };
-        const allChargesList = charges.map(ch => ({ id: ch.id, charge: ch.charge, x: ch.x, y: ch.y, z: ch.z, isStatic: ch.isStatic }));
+        const targetCharge: PointCharge = { id: selC.id, charge: selC.charge, x: selC.x, y: selC.y, z: selC.z, isStatic: selC.isStatic };
+        const allChargesList: PointCharge[] = charges.map(ch => ({ id: ch.id, charge: ch.charge, x: ch.x, y: ch.y, z: ch.z, isStatic: ch.isStatic }));
         const netForce = calculatorRef.current.calculateNetForce(targetCharge, allChargesList);
         dispatch(updateNetForce(netForce.magnitude));
+      } else {
+        dispatch(updateNetForce(null));
       }
     } else {
       dispatch(updateNetForce(null));
@@ -451,7 +464,6 @@ function CinematicIntroController() {
 export default function Charges3DScene() {
   const dispatch = useDispatch();
   const electro = useSelector((s: RootState) => s.electrostatics);
-
   const handleUpdate = useCallback((newCharges: PointChargeState[]) => {
     dispatch(syncChargesFromEngine(newCharges));
   }, [dispatch]);
@@ -466,49 +478,53 @@ export default function Charges3DScene() {
   }, [dispatch, electro.charges]);
 
   return (
-    <group>
-      {/* Invisible click-catcher for the background */}
-      <mesh scale={500} onPointerDown={(e) => {
-        e.stopPropagation();
-        cancelDeselect = false;
-        setTimeout(() => {
-          if (!cancelDeselect) handleSelect(null);
-        }, 50);
-      }}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial side={THREE.BackSide} transparent opacity={0} depthWrite={false} />
-      </mesh>
-
+    <>
       <color attach="background" args={['#030712']} />
       <fog attach="fog" args={['#030712', 20, 60]} />
-      <ambientLight intensity={0.2} />
-      <pointLight position={[0, 10, 0]} intensity={0.8} color="#818cf8" />
-      <Stars radius={50} depth={30} count={3000} factor={3} />
 
-      <ElectroPhysicsLoop
-        charges={electro.charges}
-        isPlaying={electro.isPlaying}
-        onUpdate={handleUpdate}
-      />
+      <group>
+        {/* Invisible click-catcher for the background */}
+        <mesh scale={500} onPointerDown={(e) => {
+          e.stopPropagation();
+          cancelDeselect = false;
+          setTimeout(() => {
+            if (!cancelDeselect) handleSelect(null);
+          }, 50);
+        }}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshBasicMaterial side={THREE.BackSide} transparent opacity={0} depthWrite={false} />
+        </mesh>
 
-      {/* Field visualization */}
-      <FieldArrows charges={electro.charges} />
+        <ambientLight intensity={0.2} />
+        <pointLight position={[0, 10, 0]} intensity={0.8} color="#818cf8" />
+        <Stars radius={50} depth={30} count={3000} factor={3} />
+        <InfiniteGround y={-4} baseColor="#030712" cellColor="#0d1117" sectionColor="#161f2e" fadeDistance={100} />
 
-      {/* Force lines */}
-      <ForceLines charges={electro.charges} />
-
-      {/* Charges */}
-      {electro.charges.map(ch => (
-        <ChargeSphere
-          key={ch.id}
-          charge={ch}
-          isSelected={ch.id === electro.selectedChargeId}
-          onSelect={handleSelect}
-          onDragEnd={handleDragEnd}
+        <ElectroPhysicsLoop
+          charges={electro.charges}
+          isPlaying={electro.isPlaying}
+          onUpdate={handleUpdate}
         />
-      ))}
 
-      <CinematicIntroController />
-    </group>
+        {/* Field visualization */}
+        <FieldArrows charges={electro.charges} />
+
+        {/* Force lines */}
+        <ForceLines charges={electro.charges} />
+
+        {/* Charges */}
+        {electro.charges.map(ch => (
+          <ChargeSphere
+            key={ch.id}
+            charge={ch}
+            isSelected={ch.id === electro.selectedChargeId}
+            onSelect={handleSelect}
+            onDragEnd={handleDragEnd}
+          />
+        ))}
+
+        <CinematicIntroController />
+      </group>
+    </>
   );
 }

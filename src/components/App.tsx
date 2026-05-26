@@ -13,15 +13,9 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [toastMsg, setToastMsg] = React.useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-  const handleNav = (path: string, key: string) => {
-    if (['/collision', '/pendulum'].includes(path)) {
-      setToastMsg('Esta simulación estará disponible próximamente.');
-      setTimeout(() => setToastMsg(''), 3000);
-      return;
-    }
+  const handleNav = (path: string, _key: string) => {
     setMobileMenuOpen(false);
     navigate(path);
   };
@@ -52,18 +46,16 @@ const Header = () => {
         <button className={`nav-btn ${location.pathname === '/circuit' ? 'active' : ''}`} onClick={() => handleNav('/circuit', 'circuit')}>
           <Zap className="nav-icon" size={16} /> Circuitos
         </button>
-        <button className={`nav-btn disabled`} onClick={() => handleNav('/collision', 'collision')}>
+        <button className={`nav-btn ${location.pathname === '/collision' ? 'active' : ''}`} onClick={() => handleNav('/collision', 'collision')}>
           <Orbit className="nav-icon" size={16} /> Colisiones
+        </button>
+        <button className={`nav-btn ${location.pathname === '/pendulum' ? 'active' : ''}`} onClick={() => handleNav('/pendulum', 'pendulum')}>
+          <CircleDashed className="nav-icon" size={16} /> Péndulo
         </button>
       </nav>
 
       <div className="top-bar-right"></div>
 
-      {toastMsg && (
-        <div className="toast-notification">
-          <span>{toastMsg}</span>
-        </div>
-      )}
     </header>
   );
 };
@@ -286,6 +278,8 @@ export default function App() {
               <Route path="/freefall" element={<MiroLeftPanel />} />
               <Route path="/electrostatics" element={<><MiroLeftPanel /><ElectroRightPanel /></>} />
               <Route path="/circuit" element={<MiroLeftPanel />} />
+              <Route path="/collision" element={<MiroLeftPanel />} />
+              <Route path="/pendulum" element={<MiroLeftPanel />} />
             </Routes>
           </div>
         } />
