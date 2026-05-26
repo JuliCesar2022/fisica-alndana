@@ -10,7 +10,7 @@ import { CircuitScene } from './scenes/CircuitScene';
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: window.innerWidth,
+  width: window.innerWidth, 
   height: window.innerHeight,
   backgroundColor: '#0a0e17',
   scale: {
