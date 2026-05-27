@@ -1031,85 +1031,75 @@ export default function MiroLeftPanel() {
       collision.collisionType === 'elastic'   ? '#10b981' :
       collision.collisionType === 'inelastic' ? '#ef4444' : '#f59e0b';
 
+    const Row = ({ label, value, color }: { label: string; value: string; color?: string }) => (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '4px 0' }}>
+        <span style={{ color: color ?? '#94a3b8' }}>{label}</span>
+        <span style={{ fontWeight: 700, color: color ?? '#f1f5f9', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+      </div>
+    );
+
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px', marginBottom: '4px' }}>
-          <h3 style={{ fontSize: '12px', color: '#818cf8', fontWeight: 600, margin: '0 0 4px 0' }}>Colisiones — Conservación de Cantidad de Movimiento</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+        {/* Header */}
+        <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: '10px', padding: '10px 12px' }}>
+          <div style={{ fontSize: '11px', color: '#818cf8', fontWeight: 700, marginBottom: '4px' }}>Conservación de Cantidad de Movimiento</div>
           <span style={{ fontSize: '10px', color: typeColor, fontWeight: 600 }}>{typeLabel}</span>
-          <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.4, margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '10px', color: '#64748b', lineHeight: 1.4, margin: '4px 0 0 0' }}>
             La cantidad de movimiento total se conserva en cualquier tipo de colisión.
           </p>
         </div>
 
-        {/* Before */}
-        <div style={{ fontSize: '10px', color: '#818cf8', fontWeight: 600, marginBottom: '-4px' }}>Antes de la colisión</div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#f87171' }}>v₁ inicial</span>
-          <span style={{ fontWeight: 'bold' }}>{fmtV(collision.v1)}</span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#93c5fd' }}>v₂ inicial</span>
-          <span style={{ fontWeight: 'bold' }}>{fmtV(collision.v2)}</span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#a5b4fc' }}>p total (antes)</span>
-          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.pBefore)} kg·m/s` : dash}</span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#eab308' }}>E cinética (antes)</span>
-          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.keBefore)} J` : dash}</span>
+        {/* Antes */}
+        <div style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: '10px', padding: '10px 12px' }}>
+          <div style={{ fontSize: '10px', color: '#f87171', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Antes de la colisión</div>
+          <Row label="v₁ inicial" value={fmtV(collision.v1)} color="#f87171" />
+          <Row label="v₂ inicial" value={fmtV(collision.v2)} color="#93c5fd" />
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '4px', paddingTop: '4px' }}>
+            <Row label="p total" value={done ? `${fmtN(r!.pBefore)} kg·m/s` : dash} color="#a5b4fc" />
+            <Row label="E cinética" value={done ? `${fmtN(r!.keBefore)} J` : dash} color="#eab308" />
+          </div>
         </div>
 
-        {/* After */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', fontSize: '10px', color: '#10b981', fontWeight: 600, marginBottom: '-4px' }}>Después de la colisión</div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#f87171' }}>v₁ final</span>
-          <span style={{ fontWeight: 'bold', color: done ? '#f87171' : '#475569' }}>{done ? fmtV(r!.v1After) : dash}</span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#93c5fd' }}>v₂ final</span>
-          <span style={{ fontWeight: 'bold', color: done ? '#93c5fd' : '#475569' }}>{done ? fmtV(r!.v2After) : dash}</span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#a5b4fc' }}>p total (después)</span>
-          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.pAfter)} kg·m/s` : dash}</span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#eab308' }}>E cinética (después)</span>
-          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.keAfter)} J` : dash}</span>
-        </div>
-        <div className="formula-row" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>Energía perdida (ΔKE)</span>
-          <span style={{ fontWeight: 'bold', color: done && r!.keLost > 0.001 ? '#ef4444' : '#10b981' }}>
-            {done ? `${fmtN(r!.keLost)} J` : dash}
-          </span>
-        </div>
-        <div className="formula-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <span style={{ color: '#a5b4fc' }}>Impulso (J)</span>
-          <span style={{ fontWeight: 'bold' }}>{done ? `${fmtN(r!.impulse)} N·s` : dash}</span>
+        {/* Después */}
+        <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: '10px', padding: '10px 12px' }}>
+          <div style={{ fontSize: '10px', color: '#10b981', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Después de la colisión</div>
+          <Row label="v₁ final" value={done ? fmtV(r!.v1After) : dash} color={done ? '#f87171' : '#475569'} />
+          <Row label="v₂ final" value={done ? fmtV(r!.v2After) : dash} color={done ? '#93c5fd' : '#475569'} />
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '4px', paddingTop: '4px' }}>
+            <Row label="p total" value={done ? `${fmtN(r!.pAfter)} kg·m/s` : dash} color="#a5b4fc" />
+            <Row label="E cinética" value={done ? `${fmtN(r!.keAfter)} J` : dash} color="#eab308" />
+          </div>
         </div>
 
-        {/* Formulas */}
-        <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+        {/* Resumen */}
+        <div style={{ background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '4px 0' }}>
+            <span style={{ fontWeight: 700, color: '#f8fafc' }}>Energía perdida (ΔKE)</span>
+            <span style={{ fontWeight: 700, color: done && r!.keLost > 0.001 ? '#ef4444' : '#10b981', fontVariantNumeric: 'tabular-nums' }}>
+              {done ? `${fmtN(r!.keLost)} J` : dash}
+            </span>
+          </div>
+          <Row label="Impulso (J)" value={done ? `${fmtN(r!.impulse)} N·s` : dash} color="#a5b4fc" />
+        </div>
+
+        {/* Fórmulas KaTeX */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {done ? (
             <>
-              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '8px' }}>
                 {math(`v_1' = \\frac{(m_1 - e\\,m_2)v_1 + m_2(1+e)v_2}{m_1+m_2} = ${r!.v1After.toFixed(3)}\\text{ m/s}`, true)}
               </div>
-              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+              <div style={{ fontSize: '10px', color: '#a5b4fc', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '8px' }}>
                 {math(`v_2' = \\frac{(m_2 - e\\,m_1)v_2 + m_1(1+e)v_1}{m_1+m_2} = ${r!.v2After.toFixed(3)}\\text{ m/s}`, true)}
               </div>
-              <div style={{ fontSize: '10px', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px' }}>
+              <div style={{ fontSize: '10px', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '8px' }}>
                 {math(`p_{total} = ${r!.pBefore.toFixed(3)} \\approx ${r!.pAfter.toFixed(3)}\\text{ kg·m/s}\\;\\checkmark`, true)}
               </div>
             </>
-          ) : collision.isPlaying ? (
-            <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
-              Simulación en curso...
-            </div>
           ) : (
             <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>
-              Ejecuta la simulación para ver los resultados
+              {collision.isPlaying ? 'Simulación en curso...' : 'Ejecuta la simulación para ver los resultados'}
             </div>
           )}
         </div>
